@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Schema } from "@google/genai";
 
 const FLASH_MODEL = 'gemini-3-flash-preview';
 
@@ -7,70 +7,166 @@ const getAIInstance = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
-// --- OPTIMIZATION HELPER: CLEAN JSON ---
-// AI often returns ```json ... ``` blocks. This function strips them before parsing.
+// --- ROBUST JSON PARSER ---
+// Dù có schema, đôi khi AI vẫn thêm text thừa. Hàm này lọc sạch sẽ.
 const cleanAndParseJSON = (text: string, fallback: any) => {
   try {
     if (!text) return fallback;
-    // Remove markdown code blocks if present
-    let cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
-    // Sometimes it wraps in just ``` ... ```
-    cleanText = cleanText.replace(/```\n?|\n?```/g, '').trim();
-    return JSON.parse(cleanText);
+    // Tìm điểm bắt đầu { hoặc [ và điểm kết thúc } hoặc ]
+    const firstBrace = text.indexOf('{');
+    const firstBracket = text.indexOf('[');
+    
+    let startIndex = -1;
+    if (firstBrace === -1 && firstBracket === -1) return fallback;
+    if (firstBrace !== -1 && firstBracket !== -1) startIndex = Math.min(firstBrace, firstBracket);
+    else startIndex = firstBrace !== -1 ? firstBrace : firstBracket;
+
+    const lastBrace = text.lastIndexOf('}');
+    const lastBracket = text.lastIndexOf(']');
+    const endIndex = Math.max(lastBrace, lastBracket);
+
+    if (startIndex === -1 || endIndex === -1) return fallback;
+
+    const jsonStr = text.substring(startIndex, endIndex + 1);
+    return JSON.parse(jsonStr);
   } catch (e) {
     console.warn("JSON Parse Failed:", text);
     return fallback;
   }
 };
 
-const SYSTEM_CURRICULUM = `Bạn là Gia sư Gen Z "keo lỳ", năng động.
+const SYSTEM_CURRICULUM = `Bạn là Gia sư Gen Z.
 QUY TẮC:
-1. Ngôn ngữ: Teen code hiện đại (slay, xu cà na, gwenchana, overthinking, flex...).
-2. Kiến thức: Chuẩn SGK 2018 (Mới).
-3. JSON Output: TUYỆT ĐỐI CHÍNH XÁC, không thêm text thừa ngoài JSON khi được yêu cầu.`;
+1. Ngôn ngữ: Teen code, mặn mòi (slay, keo lỳ, xu cà na...).
+2. Kiến thức: Chuẩn SGK 2018.
+3. OUTPUT: CHỈ TRẢ VỀ JSON KHI ĐƯỢC HỎI VỀ DỮ LIỆU. KHÔNG MARKDOWN.`;
+
+// --- 1. KHO ĐỀ (FIXED SEARCH) ---
+export const getOfficialExamLinks = async (subject: string, year: string, province: string, grade: string) => {
+  const ai = getAIInstance();
+  // Prompt lách luật: Yêu cầu AI tìm kiếm rồi format lại thành list Markdown để dễ parse
+  const query = `Tìm kiếm 5 đường link tải file PDF/Word đề thi chính thức môn ${subject} lớp ${grade} năm ${year} của ${province} (hoặc các trường chuyên tại đó).
+  Yêu cầu trả về định dạng text list:
+  - [Tiêu đề đề thi 1](Link 1)
+  - [Tiêu đề đề thi 2](Link 2)
+  ...
+  Không cần giải thích gì thêm.`;
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: query,
+      config: { tools: [{ googleSearch: {} }] }
+    });
+
+    // Cách 1: Lấy từ Grounding Metadata (Chính chủ Google)
+    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    let links = chunks
+      .filter((c: any) => c.web?.uri && c.web?.title)
+      .map((c: any) => ({ web: { title: c.web.title, uri: c.web.uri } }));
+
+    // Cách 2: Fallback - Parse từ text nếu Grounding không trả về trực tiếp
+    if (links.length === 0 && response.text) {
+      const regex = /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g;
+      let match;
+      while ((match = regex.exec(response.text)) !== null) {
+        links.push({ web: { title: match[1], uri: match[2] } });
+      }
+    }
+
+    return links;
+  } catch (e) {
+    console.error("Search Error:", e);
+    return [];
+  }
+};
+
+// --- 2. TẠO ĐỀ THI (FIXED SCHEMA) ---
+export const generateExamPaper = async (subject: string, grade: string, difficulty: string, count: number = 20): Promise<any[]> => {
+  const ai = getAIInstance();
+  
+  // Định nghĩa Schema cứng
+  const examSchema: Schema = {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        question: { type: Type.STRING },
+        options: { type: Type.ARRAY, items: { type: Type.STRING } },
+        correctAnswerIndex: { type: Type.INTEGER },
+        explanation: { type: Type.STRING }
+      },
+      required: ["question", "options", "correctAnswerIndex", "explanation"]
+    }
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: `Tạo ${count} câu trắc nghiệm môn ${subject} lớp ${grade} (SGK 2018), độ khó ${difficulty}.
+      - Output JSON thuần túy.
+      - explanation: Giải thích ngắn gọn, hài hước kiểu Gen Z.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: examSchema
+      }
+    });
+    
+    return cleanAndParseJSON(response.text || "[]", []);
+  } catch (e) {
+    console.error("Exam Gen Error:", e);
+    return [];
+  }
+};
+
+// --- 3. CHẤM VĂN (FIXED SCHEMA) ---
+export const gradeEssay = async (essay: string, topic: string) => {
+  const ai = getAIInstance();
+
+  const gradeSchema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      score: { type: Type.NUMBER },
+      feedback: { type: Type.STRING },
+      improvements: { type: Type.STRING }
+    },
+    required: ["score", "feedback", "improvements"]
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: `Bạn là giáo viên văn Gen Z khó tính nhưng công tâm. Hãy chấm bài văn sau với đề bài: "${topic}".
+      Bài làm: "${essay}"
+      
+      Yêu cầu:
+      - score: Điểm số (thang 10, có thể lẻ 0.5).
+      - feedback: Nhận xét giọng "xéo xắt" nhưng xây dựng, dùng slang (overthinking, thao túng tâm lý, slay...).
+      - improvements: Gợi ý sửa bài cụ thể.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: gradeSchema
+      }
+    });
+    return cleanAndParseJSON(response.text || "{}", null);
+  } catch (e) {
+    console.error("Grade Error:", e);
+    return null;
+  }
+};
+
+// --- CÁC HÀM KHÁC (GIỮ NGUYÊN HOẶC TỐI ƯU NHẸ) ---
 
 export const generateExamRoadmap = async (grade: string, subject: string): Promise<any> => {
   const ai = getAIInstance();
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Tạo lộ trình 5 bước ôn tập môn ${subject} lớp ${grade} (SGK 2018). 
-      JSON format: {roadmap: [{id: string, title: string, difficulty: 'theory'|'practice'|'hardcore', topics: string[]}]}`,
-      config: {
-        systemInstruction: SYSTEM_CURRICULUM,
-        responseMimeType: "application/json"
-      }
+      contents: `Tạo lộ trình 5 bước ôn tập môn ${subject} lớp ${grade}. JSON format: {roadmap: [{id, title, difficulty, topics}]}`,
+      config: { responseMimeType: "application/json" }
     });
     return cleanAndParseJSON(response.text || "{}", { roadmap: [] });
-  } catch (e) {
-    return { roadmap: [] };
-  }
-};
-
-export const generateExamPaper = async (subject: string, grade: string, difficulty: string, count: number = 20): Promise<any[]> => {
-  const ai = getAIInstance();
-  try {
-    const response = await ai.models.generateContent({
-      model: FLASH_MODEL,
-      contents: `Tạo đúng ${count} câu hỏi trắc nghiệm lớp ${grade} môn ${subject} bám sát SGK 2018, độ khó: ${difficulty}. 
-      Yêu cầu output JSON thuần túy:
-      [{
-        "question": "Nội dung câu hỏi",
-        "options": ["A", "B", "C", "D"],
-        "correctAnswerIndex": 0, (0=A, 1=B, 2=C, 3=D)
-        "explanation": "Giải thích ngắn gọn kiểu Gen Z"
-      }]`,
-      config: {
-        systemInstruction: SYSTEM_CURRICULUM,
-        responseMimeType: "application/json"
-      }
-    });
-    const data = cleanAndParseJSON(response.text || "[]", []);
-    return Array.isArray(data) ? data : [];
-  } catch (e) {
-    console.error("Gemini Error:", e);
-    return [];
-  }
+  } catch (e) { return { roadmap: [] }; }
 };
 
 export const getTutorResponse = async (msg: string) => {
@@ -80,7 +176,7 @@ export const getTutorResponse = async (msg: string) => {
     contents: msg,
     config: { systemInstruction: SYSTEM_CURRICULUM }
   });
-  return res.text || "Xu cà na, mạng lag rồi ní ơi!";
+  return res.text || "Mạng lag quá ní ơi, hỏi lại đi!";
 };
 
 export const analyzeStudyImage = async (base64Image: string, prompt: string) => {
@@ -95,14 +191,14 @@ export const analyzeStudyImage = async (base64Image: string, prompt: string) => 
     },
     config: { systemInstruction: SYSTEM_CURRICULUM }
   });
-  return res.text || "Không soi được ảnh này, mờ quá hoặc lỗi rồi ní.";
+  return res.text || "Ảnh mờ quá, lau cam đi ní!";
 };
 
 export const getDailyBlitzQuiz = async (subject: string): Promise<any[]> => {
   const ai = getAIInstance();
   const response = await ai.models.generateContent({
     model: FLASH_MODEL,
-    contents: `Tạo 3 câu trắc nghiệm nhanh môn ${subject}. JSON: [{question: string, options: [string], answer: string}]`,
+    contents: `Tạo 3 câu trắc nghiệm nhanh môn ${subject}. JSON: [{question, options, answer}]`,
     config: { responseMimeType: "application/json" }
   });
   return cleanAndParseJSON(response.text || "[]", []);
@@ -113,7 +209,7 @@ export const getDebateResponse = async (history: any[], topic: string) => {
   const res = await ai.models.generateContent({
     model: FLASH_MODEL,
     contents: history.map(h => ({ role: h.role === 'ai' ? 'model' : 'user', parts: [{ text: h.text }] })),
-    config: { systemInstruction: `Bạn là trọng tài tranh biện Gen Z về: ${topic}. Phản biện gắt, dùng ngôn ngữ teen code, hài hước và chấm điểm công tâm.` }
+    config: { systemInstruction: `Bạn là trọng tài tranh biện về: ${topic}. Phản biện gắt, hài hước.` }
   });
   return res.text || "";
 };
@@ -123,12 +219,9 @@ export const checkVibePost = async (content: string) => {
   const res = await ai.models.generateContent({
     model: FLASH_MODEL,
     contents: `Phân tích vibe: "${content}". JSON: {comment: string}`,
-    config: { 
-      systemInstruction: "Bạn là một AI Gen Z chuyên đi comment dạo. Nhận xét ngắn gọn, hài hước, dùng slang (slay, keo lỳ...).",
-      responseMimeType: "application/json" 
-    }
+    config: { responseMimeType: "application/json" }
   });
-  return cleanAndParseJSON(res.text || '{}', { comment: "Vibe này hơi bị đỉnh!" });
+  return cleanAndParseJSON(res.text || '{}', { comment: "Vibe đỉnh!" });
 };
 
 export const getOracleReading = async () => {
@@ -136,69 +229,34 @@ export const getOracleReading = async () => {
   try {
     const res = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Bạn là "Thần Bài Học Thuật" Gen Z. Bốc 1 lá bài Tarot học tập.
-      JSON: {
-        "cardName": "Tên lá bài (Hài hước)",
-        "rarity": "Common" | "Rare" | "Epic" | "Legendary",
-        "message": "Lời tiên tri ngắn gọn kiểu teen code",
-        "luckyItem": "Vật phẩm may mắn",
-        "buff": "Hiệu ứng buff"
-      }`,
+      contents: `Bốc bài Tarot học tập. JSON: {cardName, rarity, message, luckyItem, buff}`,
       config: { responseMimeType: "application/json" }
     });
     return cleanAndParseJSON(res.text || '{}', {});
-  } catch (e) {
-    return {
-      cardName: "The 404 Error",
-      rarity: "Common",
-      message: "Vũ trụ đang mất kết nối. Xu cà na!",
-      luckyItem: "Nút F5",
-      buff: "Không có"
-    };
-  }
+  } catch (e) { return null; }
 };
 
-export const suggestHashtags = async (content: string) => ["study", "2k7", "2k8", "2k9", "slay", "flex"];
+export const suggestHashtags = async (content: string) => ["study", "genz", "flex"];
 export const roastOrToast = async (user: any, mode: string) => {
     const ai = getAIInstance();
     const res = await ai.models.generateContent({
         model: FLASH_MODEL,
-        contents: `${mode === 'roast' ? 'Roast (chê hài hước)' : 'Toast (khen nức nở)'} profile này: ${JSON.stringify(user)}. Dùng ngôn ngữ Gen Z.`,
+        contents: `${mode} profile này: ${JSON.stringify(user)}. Gen Z style.`,
     });
     return res.text;
 };
-export const getChampionTip = async (name: string) => "Học không chơi đánh rơi tuổi trẻ, chơi không học bán rẻ tương lai!";
-
-// --- NEW IMPLEMENTATIONS ---
-
-export const getOfficialExamLinks = async (subject: string, year: string, province: string, grade: string) => {
-  const ai = getAIInstance();
-  const query = `Đề thi chính thức môn ${subject} lớp ${grade} năm ${year} sở GD ${province} có đáp án (file PDF hoặc Word)`;
-  try {
-    const response = await ai.models.generateContent({
-      model: FLASH_MODEL,
-      contents: query,
-      config: { tools: [{ googleSearch: {} }] }
-    });
-    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-    return chunks.filter((c: any) => c.web);
-  } catch (e) {
-    return [];
-  }
-};
+export const getChampionTip = async (name: string) => "Học đi đôi với hành!";
 
 export const generateMindMap = async (topic: string) => {
   const ai = getAIInstance();
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Tạo sơ đồ tư duy: "${topic}". JSON: { "root": "${topic}", "children": [{ "name": "...", "children": [...] }] }. Max 3 levels.`,
+      contents: `Tạo Mindmap về "${topic}". JSON: {root, children: [{name, children}]}. Max 3 levels.`,
       config: { responseMimeType: "application/json" }
     });
     return cleanAndParseJSON(response.text || '{}', { root: "Lỗi", children: [] });
-  } catch (e) {
-    return { root: "Lỗi kết nối", children: [] };
-  }
+  } catch (e) { return { root: "Lỗi kết nối", children: [] }; }
 };
 
 export const summarizeText = async (text: string) => {
@@ -206,12 +264,10 @@ export const summarizeText = async (text: string) => {
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Tóm tắt văn bản sau (Gen Z style, gạch đầu dòng):\n\n${text}`,
+      contents: `Tóm tắt: ${text}`,
     });
     return response.text;
-  } catch (e) {
-    return "Không thể tóm tắt văn bản này.";
-  }
+  } catch (e) { return "Lỗi tóm tắt."; }
 };
 
 export const downloadAsFile = (content: string, filename: string) => {
@@ -229,25 +285,9 @@ export const generateFlashcards = async (topic: string) => {
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Tạo 10 flashcard về: "${topic}". JSON: [{ "front": "Hỏi", "back": "Đáp" }]. Ngắn gọn, súc tích.`,
+      contents: `Tạo 10 flashcard: "${topic}". JSON: [{front, back}]`,
       config: { responseMimeType: "application/json" }
     });
     return cleanAndParseJSON(response.text || "[]", []);
-  } catch (e) {
-    return [];
-  }
-};
-
-export const gradeEssay = async (essay: string, topic: string) => {
-  const ai = getAIInstance();
-  try {
-    const response = await ai.models.generateContent({
-      model: FLASH_MODEL,
-      contents: `Chấm điểm văn: "${topic}". JSON: { "score": number, "feedback": "Nhận xét (Gen Z)", "improvements": "Cải thiện" }`,
-      config: { responseMimeType: "application/json" }
-    });
-    return cleanAndParseJSON(response.text || "{}", {});
-  } catch (e) {
-    return null;
-  }
+  } catch (e) { return []; }
 };

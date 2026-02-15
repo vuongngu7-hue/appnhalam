@@ -16,7 +16,6 @@ import {
 } from '../services/geminiService';
 import MarkdownText from './MarkdownText';
 
-// --- STATIC CONFIG (Clean Code) ---
 const TOOLS_CONFIG = [
   { 
     id: 'exam_bank', 
@@ -25,7 +24,7 @@ const TOOLS_CONFIG = [
     icon: Globe, 
     fromColor: 'from-blue-500', 
     toColor: 'to-indigo-600',
-    placeholder: 'Tìm kiếm đề thi (VD: Đề Toán 2024 Hà Nội)...',
+    placeholder: 'Nhập từ khóa (VD: Đề Toán 2024 Hà Nội)...',
     suggestions: ['Đề Toán 2024 Hà Nội', 'Đề Văn 2023 TP.HCM', 'Đề Anh 2024 Đà Nẵng']
   },
   { 
@@ -35,7 +34,7 @@ const TOOLS_CONFIG = [
     icon: GraduationCap, 
     fromColor: 'from-rose-500', 
     toColor: 'to-pink-600',
-    placeholder: 'Chủ đề ôn thi...',
+    placeholder: 'Chủ đề ôn thi (VD: Hàm số, Lịch sử 12)...',
     suggestions: ['Hàm số mũ Logarit', 'Lịch sử thế giới hiện đại', 'Di truyền học']
   },
   { 
@@ -45,8 +44,8 @@ const TOOLS_CONFIG = [
     icon: Layers, 
     fromColor: 'from-amber-400', 
     toColor: 'to-orange-500',
-    placeholder: 'Nhập chủ đề (VD: 50 từ vựng IELTS Environment)...',
-    suggestions: ['Từ vựng chủ đề Environment', 'Công thức Lý 12 chương 1', 'Sự kiện lịch sử VN 1945']
+    placeholder: 'Nhập chủ đề...',
+    suggestions: ['Từ vựng IELTS Environment', 'Công thức Lý 12 chương 1']
   },
   { 
     id: 'essay_grader', 
@@ -55,8 +54,8 @@ const TOOLS_CONFIG = [
     icon: PenTool, 
     fromColor: 'from-fuchsia-500', 
     toColor: 'to-purple-600',
-    placeholder: 'Dán bài làm của bạn vào đây...',
-    suggestions: ['Phân tích nhân vật Mị', 'Nghị luận về sống đẹp', 'Cảm nhận Tây Tiến']
+    placeholder: 'Dán bài làm của bạn vào đây (Tối thiểu 50 từ)...',
+    suggestions: []
   },
   { 
     id: 'mindmap', 
@@ -66,7 +65,7 @@ const TOOLS_CONFIG = [
     fromColor: 'from-emerald-400', 
     toColor: 'to-teal-600',
     placeholder: 'Nhập chủ đề gốc...',
-    suggestions: ['Chiến tranh lạnh', 'Quang hợp ở thực vật', 'Thơ mới 1930-1945']
+    suggestions: ['Chiến tranh lạnh', 'Quang hợp ở thực vật']
   },
   { 
     id: 'summary', 
@@ -76,11 +75,9 @@ const TOOLS_CONFIG = [
     fromColor: 'from-sky-400', 
     toColor: 'to-blue-500',
     placeholder: 'Dán văn bản cần tóm tắt...',
-    suggestions: ['Tóm tắt văn bản lịch sử', 'Tóm tắt bài báo khoa học']
+    suggestions: []
   }
 ];
-
-// --- SUB-COMPONENTS (Performance Optimization) ---
 
 const ToolCard = memo(({ tool, onClick }: { tool: any, onClick: (id: string) => void }) => (
   <button 
@@ -148,18 +145,14 @@ const FlashcardDeck = memo(({ cards }: { cards: any[] }) => {
           {/* Front */}
           <div className="absolute inset-0 backface-hidden bg-white border border-slate-100 rounded-[2.5rem] shadow-2xl flex flex-col items-center justify-center p-6 text-center overflow-hidden">
             <span className="absolute top-6 left-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Question</span>
-            
             <div className="w-full max-h-[80%] overflow-y-auto px-4 flex items-center justify-center">
                 <p className="text-xl md:text-2xl font-black text-slate-800 leading-tight">{cards[index].front}</p>
             </div>
-
             <div className="absolute bottom-6 right-6 text-slate-300 animate-pulse"><RotateCw size={20}/></div>
           </div>
-          
           {/* Back */}
           <div className="absolute inset-0 backface-hidden bg-gradient-to-br from-indigo-600 to-violet-700 rounded-[2.5rem] shadow-2xl flex flex-col items-center justify-center p-6 text-center rotate-y-180 text-white overflow-hidden">
             <span className="absolute top-6 left-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Answer</span>
-            
             <div className="w-full max-h-[80%] overflow-y-auto px-4 flex items-center justify-center">
                 <p className="text-lg md:text-xl font-bold leading-relaxed">{cards[index].back}</p>
             </div>
@@ -176,20 +169,19 @@ const FlashcardDeck = memo(({ cards }: { cards: any[] }) => {
         .transform-style-3d { transform-style: preserve-3d; }
         .backface-hidden { backface-visibility: hidden; }
         .rotate-y-180 { transform: rotateY(180deg); }
-        /* Hide scrollbar for cleaner look */
         ::-webkit-scrollbar { width: 0px; background: transparent; }
       `}</style>
     </div>
   );
 });
 
-// --- MAIN COMPONENT ---
 const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) => {
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [subInput, setSubInput] = useState('');
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [examLinks, setExamLinks] = useState<any[]>([]);
   const [filters, setFilters] = useState({ year: '2024', subject: 'Toán học', province: 'Hà Nội', grade: '12' });
   const [oracleCard, setOracleCard] = useState<any>(null);
@@ -198,25 +190,49 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
   const currentToolConfig = useMemo(() => TOOLS_CONFIG.find(t => t.id === activeTool), [activeTool]);
 
   const handleRunTool = useCallback(async () => {
-    if (!input.trim() && activeTool !== 'exam_bank') return;
+    // Validate inputs
+    if (activeTool !== 'exam_bank' && !input.trim()) {
+       setError("Vui lòng nhập nội dung!");
+       return;
+    }
+    if (activeTool === 'essay_grader' && input.length < 50) {
+       setError("Bài văn quá ngắn, hãy viết ít nhất 50 từ nhé!");
+       return;
+    }
+
     setLoading(true);
     setResult(null);
     setExamLinks([]);
+    setError(null);
 
     try {
-      // Async logic (giữ nguyên logic service nhưng code gọn hơn)
       let res;
       switch (activeTool) {
         case 'exam_bank':
           const links = await getOfficialExamLinks(filters.subject, filters.year, filters.province, filters.grade);
-          setExamLinks(links);
-          onExp(10);
+          if (links.length === 0) setError("Không tìm thấy đề thi nào phù hợp. Thử đổi tỉnh thành hoặc năm xem sao!");
+          else {
+             setExamLinks(links);
+             onExp(10);
+          }
           break;
         case 'quiz_creator':
           res = await generateExamPaper(input || filters.subject, filters.grade, "practice", 10);
-          setResult(res);
-          onExp(30);
+          if (res.length === 0) setError("AI đang quá tải, hãy thử lại sau ít phút!");
+          else {
+             setResult(res);
+             onExp(30);
+          }
           break;
+        case 'essay_grader':
+          res = await gradeEssay(input, subInput || 'Chủ đề tự do');
+          if (!res) setError("Không thể chấm bài này. Hãy đảm bảo nội dung là văn học.");
+          else {
+             setResult(res);
+             onExp(35);
+          }
+          break;
+        // ... (Other cases same as before)
         case 'mindmap':
           res = await generateMindMap(input);
           setResult(res);
@@ -232,14 +248,9 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
           setResult(res);
           onExp(25);
           break;
-        case 'essay_grader':
-          res = await gradeEssay(input, subInput || 'Chủ đề tự do');
-          setResult(res);
-          onExp(35);
-          break;
       }
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      setError("Đã có lỗi xảy ra. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
@@ -265,6 +276,7 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
     setInput('');
     setExamLinks([]);
     setSubInput('');
+    setError(null);
   }, []);
 
   return (
@@ -277,7 +289,7 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
         </div>
       )}
 
-      {/* ORACLE WIDGET (Compact & Futuristic) */}
+      {/* ORACLE WIDGET */}
       {!activeTool && (
         <div className="relative group overflow-hidden rounded-[2.5rem] shadow-2xl transition-all hover:scale-[1.02]">
            <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 animate-gradient-xy"></div>
@@ -318,7 +330,7 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
         </div>
       )}
 
-      {/* TOOL GRID (Bento Layout) */}
+      {/* TOOL GRID */}
       {!activeTool ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-stagger-in">
            {TOOLS_CONFIG.map(tool => (
@@ -344,8 +356,8 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
               {/* Contextual Inputs */}
               {(activeTool === 'exam_bank' || activeTool === 'quiz_creator') && (
                 <div className="grid grid-cols-2 gap-3 mb-6">
-                   <select value={filters.year} onChange={e => setFilters({...filters, year: e.target.value})} className="bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-100">{['2024', '2023', '2022'].map(y => <option key={y} value={y}>{y}</option>)}</select>
-                   <select value={filters.subject} onChange={e => setFilters({...filters, subject: e.target.value})} className="bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-100">{['Toán học', 'Ngữ văn', 'Tiếng Anh', 'Vật lý'].map(s => <option key={s} value={s}>{s}</option>)}</select>
+                   <select value={filters.year} onChange={e => setFilters({...filters, year: e.target.value})} className="bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-100">{['2024', '2023', '2022', '2021', '2020'].map(y => <option key={y} value={y}>{y}</option>)}</select>
+                   <select value={filters.subject} onChange={e => setFilters({...filters, subject: e.target.value})} className="bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-100">{['Toán học', 'Ngữ văn', 'Tiếng Anh', 'Vật lý', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lý'].map(s => <option key={s} value={s}>{s}</option>)}</select>
                 </div>
               )}
               
@@ -361,19 +373,26 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
               <div className="relative">
                  <textarea 
                    value={input} 
-                   onChange={e => setInput(e.target.value)} 
+                   onChange={e => { setInput(e.target.value); setError(null); }} 
                    placeholder={currentToolConfig?.placeholder} 
                    className="w-full h-40 bg-slate-50 rounded-2xl p-5 font-medium text-sm outline-none border-2 border-transparent focus:border-indigo-100 transition-all resize-none"
                  />
-                 {/* Smart Suggestions */}
-                 <div className="absolute bottom-4 left-4 flex gap-2 overflow-x-auto max-w-[calc(100%-2rem)] no-scrollbar">
-                    {currentToolConfig?.suggestions?.map((s, i) => (
-                       <button key={i} onClick={() => setInput(s)} className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm">
-                          {s}
-                       </button>
-                    ))}
-                 </div>
+                 {currentToolConfig?.suggestions?.length > 0 && (
+                    <div className="absolute bottom-4 left-4 flex gap-2 overflow-x-auto max-w-[calc(100%-2rem)] no-scrollbar">
+                        {currentToolConfig?.suggestions?.map((s, i) => (
+                        <button key={i} onClick={() => setInput(s)} className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm">
+                            {s}
+                        </button>
+                        ))}
+                    </div>
+                 )}
               </div>
+              
+              {error && (
+                <div className="mt-4 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 font-bold text-sm animate-in fade-in">
+                    <AlertCircle size={20} /> {error}
+                </div>
+              )}
 
               <button 
                 onClick={handleRunTool} 
@@ -393,7 +412,6 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
                     <span className="text-xs font-black uppercase tracking-widest text-slate-400">Kết quả xử lý</span>
                  </div>
                  
-                 {/* DYNAMIC RESULT RENDERING */}
                  <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl p-8 overflow-hidden relative">
                     {/* Exam Links */}
                     {activeTool === 'exam_bank' && (
@@ -404,22 +422,19 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
                                 <Globe size={16} className="text-slate-300 group-hover:text-indigo-500"/>
                              </a>
                           ))}
-                          {examLinks.length === 0 && <p className="text-center text-slate-400 text-sm font-bold">Không tìm thấy kết quả.</p>}
                        </div>
                     )}
-
-                    {/* Mindmap */}
-                    {activeTool === 'mindmap' && result && (
-                       <div className="overflow-x-auto py-8">
-                          <MindMapNode node={result} />
-                          <div className="text-center mt-8">
-                             <button onClick={() => downloadAsFile(JSON.stringify(result), "mindmap.json")} className="text-xs font-bold text-indigo-600 hover:underline">Download JSON</button>
-                          </div>
-                       </div>
+                    
+                    {/* Quiz Creator - Show Raw Preview or Download */}
+                    {activeTool === 'quiz_creator' && Array.isArray(result) && (
+                        <div className="text-center space-y-4">
+                            <p className="font-bold text-slate-700">Đã tạo thành công {result.length} câu hỏi!</p>
+                            <button onClick={() => downloadAsFile(JSON.stringify(result, null, 2), `quiz_${input || 'ai'}.json`)} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg">Download JSON</button>
+                            <div className="bg-slate-50 p-4 rounded-xl text-left h-40 overflow-y-auto border border-slate-200">
+                                <pre className="text-xs">{JSON.stringify(result[0], null, 2)}...</pre>
+                            </div>
+                        </div>
                     )}
-
-                    {/* Flashcards */}
-                    {activeTool === 'flashcard' && Array.isArray(result) && <FlashcardDeck cards={result} />}
 
                     {/* Essay Grader */}
                     {activeTool === 'essay_grader' && result && (
@@ -432,14 +447,25 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
                              </div>
                           </div>
                           <div className="prose prose-sm max-w-none">
+                             <h4 className="font-black text-indigo-600">Nhận xét chi tiết:</h4>
                              <MarkdownText text={result.feedback} />
                              <div className="h-px bg-slate-100 my-4"></div>
+                             <h4 className="font-black text-indigo-600">Cải thiện:</h4>
                              <MarkdownText text={result.improvements} />
                           </div>
                        </div>
                     )}
 
-                    {/* Text Summary */}
+                    {/* Other Tools Render Logic ... */}
+                    {activeTool === 'mindmap' && result && (
+                       <div className="overflow-x-auto py-8">
+                          <MindMapNode node={result} />
+                          <div className="text-center mt-8">
+                             <button onClick={() => downloadAsFile(JSON.stringify(result), "mindmap.json")} className="text-xs font-bold text-indigo-600 hover:underline">Download JSON</button>
+                          </div>
+                       </div>
+                    )}
+                    {activeTool === 'flashcard' && Array.isArray(result) && <FlashcardDeck cards={result} />}
                     {activeTool === 'summary' && typeof result === 'string' && (
                        <div className="prose prose-slate max-w-none font-medium text-slate-600">
                           <MarkdownText text={result} />
