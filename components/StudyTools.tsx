@@ -190,7 +190,6 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
   const currentToolConfig = useMemo(() => TOOLS_CONFIG.find(t => t.id === activeTool), [activeTool]);
 
   const handleRunTool = useCallback(async () => {
-    // Validate inputs
     if (activeTool !== 'exam_bank' && !input.trim()) {
        setError("Vui lòng nhập nội dung!");
        return;
@@ -210,15 +209,16 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
       switch (activeTool) {
         case 'exam_bank':
           const links = await getOfficialExamLinks(filters.subject, filters.year, filters.province, filters.grade);
-          if (links.length === 0) setError("Không tìm thấy đề thi nào phù hợp. Thử đổi tỉnh thành hoặc năm xem sao!");
-          else {
+          if (links.length === 0) {
+              setError("Không tìm thấy link nào. AI chưa tìm được nguồn.");
+          } else {
              setExamLinks(links);
              onExp(10);
           }
           break;
         case 'quiz_creator':
           res = await generateExamPaper(input || filters.subject, filters.grade, "practice", 10);
-          if (res.length === 0) setError("AI đang quá tải, hãy thử lại sau ít phút!");
+          if (!res || res.length === 0) setError("AI chưa tạo được câu hỏi, hãy thử lại.");
           else {
              setResult(res);
              onExp(30);
@@ -226,17 +226,19 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
           break;
         case 'essay_grader':
           res = await gradeEssay(input, subInput || 'Chủ đề tự do');
-          if (!res) setError("Không thể chấm bài này. Hãy đảm bảo nội dung là văn học.");
+          if (!res) setError("Lỗi chấm bài. Hãy thử lại.");
           else {
              setResult(res);
              onExp(35);
           }
           break;
-        // ... (Other cases same as before)
         case 'mindmap':
           res = await generateMindMap(input);
-          setResult(res);
-          onExp(20);
+          if (!res || !res.children) setError("Lỗi tạo Mindmap.");
+          else {
+            setResult(res);
+            onExp(20);
+          }
           break;
         case 'summary':
           res = await summarizeText(input);
@@ -250,7 +252,8 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
           break;
       }
     } catch (err) {
-      setError("Đã có lỗi xảy ra. Vui lòng thử lại!");
+      setError("Đã có lỗi hệ thống xảy ra.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -265,6 +268,8 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
       const data = await getOracleReading();
       setOracleCard(data);
       onExp(50);
+    } catch {
+      setError("Oracle đang bận.");
     } finally {
       setLoading(false);
     }
