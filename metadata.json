@@ -1,0 +1,8 @@
+{
+  "name": "du an ",
+  "description": "Hệ điều hành học tập kịch tính với hệ thống sinh tồn Streak, Tim (Lives), Boss Challenge và AI Redemption.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
