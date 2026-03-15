@@ -5,7 +5,6 @@ const FLASH_MODEL = 'gemini-3-flash-preview';
 
 // --- INIT AI CLIENT ---
 const getAIInstance = () => {
-  // Defensive check for API Key environment
   const key = process.env.API_KEY;
   if (!key) {
     console.error("API_KEY is missing!");
@@ -15,15 +14,14 @@ const getAIInstance = () => {
 };
 
 // --- SUPER ROBUST JSON PARSER ---
-// Hàm này "rửa" sạch mọi text thừa, markdown, code block để lấy JSON chuẩn
+// Hàm này cực kỳ quan trọng: Tìm và trích xuất JSON hợp lệ từ bất kỳ đống text nào
 const cleanAndParseJSON = (text: string, fallback: any) => {
   if (!text) return fallback;
   try {
-    let clean = text.trim();
-    // 1. Gỡ bỏ Markdown code blocks
-    clean = clean.replace(/```json/gi, '').replace(/```/g, '');
+    // 1. Xóa markdown code blocks
+    let clean = text.replace(/```json/gi, '').replace(/```/g, '').trim();
     
-    // 2. Tìm điểm bắt đầu và kết thúc của JSON object/array
+    // 2. Tìm điểm bắt đầu ( { hoặc [ )
     const firstBrace = clean.indexOf('{');
     const firstBracket = clean.indexOf('[');
     
@@ -38,21 +36,19 @@ const cleanAndParseJSON = (text: string, fallback: any) => {
 
     if (startIndex === -1) return fallback;
 
-    // Cắt từ điểm bắt đầu
-    clean = clean.substring(startIndex);
-
-    // Tìm điểm kết thúc hợp lý nhất (ngược từ dưới lên)
+    // 3. Tìm điểm kết thúc ( } hoặc ] ) từ cuối lên
     const lastBrace = clean.lastIndexOf('}');
     const lastBracket = clean.lastIndexOf(']');
     const endIndex = Math.max(lastBrace, lastBracket);
 
-    if (endIndex === -1) return fallback;
+    if (endIndex === -1 || endIndex < startIndex) return fallback;
 
-    clean = clean.substring(0, endIndex + 1);
+    // 4. Cắt chuỗi JSON tiềm năng
+    const jsonStr = clean.substring(startIndex, endIndex + 1);
 
-    return JSON.parse(clean);
+    return JSON.parse(jsonStr);
   } catch (e) {
-    console.warn("JSON Parse Failed. Raw text:", text);
+    console.warn("JSON Parse Failed. Raw text preview:", text.substring(0, 100));
     return fallback;
   }
 };
@@ -61,40 +57,48 @@ const SYSTEM_CURRICULUM = `Bạn là Gia sư Gen Z.
 QUY TẮC:
 1. Ngôn ngữ: Teen code, mặn mòi (slay, keo lỳ, xu cà na...).
 2. Kiến thức: Chuẩn SGK 2018.
-3. OUTPUT: JSON ONLY. KHÔNG GIẢI THÍCH THÊM.`;
+3. OUTPUT: JSON ONLY KHI ĐƯỢC YÊU CẦU.`;
 
 // --- 1. KHO ĐỀ (FIXED SEARCH LOGIC) ---
-// Thay vì tự parse metadata, ta nhờ AI tổng hợp luôn
+// Chuyển sang chiến thuật: Text Prompt -> Parse Markdown & Metadata
 export const getOfficialExamLinks = async (subject: string, year: string, province: string, grade: string) => {
   const ai = getAIInstance();
+  const query = `Tìm kiếm 5 đường link tải file PDF/Word đề thi chính thức môn ${subject} lớp ${grade} năm ${year} của ${province} (hoặc các trường chuyên tại đó).
+  Ưu tiên nguồn: thuvienhoclieu, toanmath, tuyensinh247.
+  
+  Hãy trả về kết quả dưới dạng danh sách Markdown:
+  - [Tiêu đề đề thi](Đường link)
+  `;
+  
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Tìm kiếm 5 link tải đề thi ${subject} lớp ${grade} năm ${year} khu vực ${province}.
-      
-      QUAN TRỌNG: Sau khi tìm kiếm, hãy trả về kết quả dưới dạng JSON list:
-      [
-        { "web": { "title": "Tên đề thi", "uri": "Link tải" } },
-        ...
-      ]
-      Chỉ lấy link uy tín (thuvienhoclieu, toanmath, tuyensinh247...).`,
+      contents: query,
       config: { 
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json" 
+        tools: [{ googleSearch: {} }] 
+        // LƯU Ý: Không dùng responseMimeType: 'application/json' ở đây để tool hoạt động tốt nhất
       }
     });
 
-    // Ưu tiên 1: Parse JSON trực tiếp từ text AI trả về (Do đã dặn AI trả JSON)
-    const data = cleanAndParseJSON(response.text || "[]", []);
-    if (Array.isArray(data) && data.length > 0) return data;
-
-    // Ưu tiên 2: Nếu AI không trả JSON, fallback sang Grounding Metadata
+    // Cách 1: Lấy từ Grounding Metadata (Chính chủ Google trả về)
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-    const groundingLinks = chunks
+    let links = chunks
       .filter((c: any) => c.web?.uri && c.web?.title)
       .map((c: any) => ({ web: { title: c.web.title, uri: c.web.uri } }));
-      
-    return groundingLinks;
+
+    // Cách 2: Parse từ text (Markdown links) nếu Grounding thiếu
+    if (response.text) {
+      const regex = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g;
+      let match;
+      while ((match = regex.exec(response.text)) !== null) {
+        links.push({ web: { title: match[1], uri: match[2] } });
+      }
+    }
+
+    // Lọc trùng lặp
+    const uniqueLinks = Array.from(new Map(links.map(item => [item.web.uri, item])).values());
+    
+    return uniqueLinks;
   } catch (e) {
     console.error("Search Error:", e);
     return [];
@@ -133,14 +137,14 @@ export const generateExamPaper = async (subject: string, grade: string, difficul
     return cleanAndParseJSON(response.text || "[]", []);
   } catch (e) {
     console.error("Exam Gen Error:", e);
-    return []; // Trả về mảng rỗng để UI không crash
+    return [];
   }
 };
 
 // --- 3. CHẤM VĂN (FIXED SCHEMA) ---
 export const gradeEssay = async (essay: string, topic: string) => {
   const ai = getAIInstance();
-  
+
   const gradeSchema: Schema = {
     type: Type.OBJECT,
     properties: {
@@ -163,11 +167,12 @@ export const gradeEssay = async (essay: string, topic: string) => {
     });
     return cleanAndParseJSON(response.text || "{}", null);
   } catch (e) {
+    console.error("Grade Error:", e);
     return null;
   }
 };
 
-// --- CÁC HÀM KHÁC (Đã bọc try-catch an toàn) ---
+// --- CÁC HÀM KHÁC (GIỮ NGUYÊN HOẶC TỐI ƯU NHẸ) ---
 
 export const generateExamRoadmap = async (grade: string, subject: string): Promise<any> => {
   const ai = getAIInstance();
@@ -258,7 +263,7 @@ export const getOracleReading = async () => {
   } catch (e) { return null; }
 };
 
-export const suggestHashtags = async (content: string) => ["study", "2k7", "flex"];
+export const suggestHashtags = async (content: string) => ["study", "genz", "flex"];
 export const roastOrToast = async (user: any, mode: string) => {
     const ai = getAIInstance();
     try {
@@ -276,7 +281,7 @@ export const generateMindMap = async (topic: string) => {
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Mindmap về "${topic}". JSON: {root, children: [{name, children}]}. Max 3 levels.`,
+      contents: `Tạo Mindmap về "${topic}". JSON: {root, children: [{name, children}]}. Max 3 levels.`,
       config: { responseMimeType: "application/json" }
     });
     return cleanAndParseJSON(response.text || '{}', { root: "Lỗi", children: [] });
@@ -309,7 +314,7 @@ export const generateFlashcards = async (topic: string) => {
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `10 flashcard: "${topic}". JSON: [{front, back}]`,
+      contents: `Tạo 10 flashcard: "${topic}". JSON: [{front, back}]`,
       config: { responseMimeType: "application/json" }
     });
     return cleanAndParseJSON(response.text || "[]", []);

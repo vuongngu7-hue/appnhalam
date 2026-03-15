@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Home, Zap, Trophy, Send, Sparkles, Heart, MessageCircle, 
   Plus, Bot, Stars, Search, Menu, X, Flame, Share2, 
@@ -7,7 +8,7 @@ import {
   CheckCircle2, Crown, Ghost, BookOpen, GraduationCap,
   LogOut, ArrowRight, Bell, Clock, BrainCircuit, Target, 
   ThumbsUp, Smile, MoreHorizontal, ThumbsDown, Scale,
-  ChevronRight, Calendar, LayoutGrid, FireExtinguisher,
+  ChevronRight, Calendar, LayoutGrid,
   ShieldCheck, Globe, Facebook, Key, MessageSquare, Compass, 
   Star, CheckCircle, BarChart3, ListTodo, Rocket, Shield,
   RefreshCw, AlertTriangle
@@ -160,35 +161,37 @@ const App: React.FC = () => {
     <div className="min-h-screen text-slate-800 font-sans selection:bg-indigo-100 flex flex-col overflow-x-hidden bg-[#FDFCF8]">
       {toast && <Toast toast={toast} />}
       
-      {showStreakModal && (
-        <StreakModal 
-          streak={userData.streak} // Display current streak
-          onClaim={() => {
-            handleUpdateUser({ ...userData, streak: userData.streak + 1, exp: userData.exp + 50 });
-            setShowStreakModal(false);
-            try {
-               // @ts-ignore
-               window.confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-            } catch(e) {}
-          }} 
-        />
-      )}
+      <AnimatePresence>
+        {showStreakModal && (
+          <StreakModal 
+            streak={userData.streak}
+            onClaim={() => {
+              handleUpdateUser({ ...userData, streak: userData.streak + 1, exp: userData.exp + 50 });
+              setShowStreakModal(false);
+              try {
+                 // @ts-ignore
+                 window.confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+              } catch(e) {}
+            }} 
+          />
+        )}
 
-      {showRedemption && (
-        <RedemptionModal 
-          userData={userData}
-          onSuccess={() => {
-            handleUpdateUser({ ...userData, lives: 1, streakShields: 0, lastLogin: Date.now() });
-            setShowRedemption(false);
-            showToast("Hồi sinh thành công! 🛡️", "success");
-          }}
-          onFail={() => {
-            handleUpdateUser({ ...userData, streak: 1, lives: 3, streakShields: 0, lastLogin: Date.now() });
-            setShowRedemption(false);
-            showToast("Streak đã bị dập tắt...", "error");
-          }}
-        />
-      )}
+        {showRedemption && (
+          <RedemptionModal 
+            userData={userData}
+            onSuccess={() => {
+              handleUpdateUser({ ...userData, lives: 1, streakShields: 0, lastLogin: Date.now() });
+              setShowRedemption(false);
+              showToast("Hồi sinh thành công! 🛡️", "success");
+            }}
+            onFail={() => {
+              handleUpdateUser({ ...userData, streak: 1, lives: 3, streakShields: 0, lastLogin: Date.now() });
+              setShowRedemption(false);
+              showToast("Streak đã bị dập tắt...", "error");
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       <Sidebar 
         isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} 
@@ -199,21 +202,30 @@ const App: React.FC = () => {
       <Header onOpenMenu={() => setSidebarOpen(true)} userData={userData} activeTab={activeTab} />
 
       <main className={`flex-1 w-full max-w-4xl mx-auto transition-all duration-500 ${activeTab === AppTab.TUTOR ? 'h-[calc(100vh-80px-100px)] overflow-hidden' : 'p-4 md:p-8 pb-32 mt-20'}`}>
-        <div className="animate-fade-in">
-          {activeTab === AppTab.FEED && (
-            <>
-              <ZenDashboard userData={userData} onClaim={claimQuestReward} />
-              <Feed userData={userData} onExp={(n) => { handleAddExp(n); updateQuestProgress('q3', 1); }} />
-            </>
-          )}
-          {activeTab === AppTab.MISSION && <MissionControl userData={userData} onUpdate={handleUpdateUser} />}
-          {activeTab === AppTab.TUTOR && <AITutor userData={userData} onExp={(n) => { handleAddExp(n); updateQuestProgress('q2', 1); }} />}
-          {activeTab === AppTab.FOCUS && <FocusZone onExp={(n) => { handleAddExp(n); updateQuestProgress('q1', 25); }} showToast={showToast} />}
-          {activeTab === AppTab.QUIZ && <QuizArena onExp={handleAddExp} showToast={showToast} />}
-          {activeTab === AppTab.TOOLS && <StudyTools onExp={handleAddExp} />}
-          {activeTab === AppTab.RANK && <Leaderboard currentUid={userData.uid} userData={userData} />}
-          {activeTab === AppTab.PROFILE && <Profile userData={userData} onUpdate={handleUpdateUser} onToast={showToast} />}
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="w-full"
+          >
+            {activeTab === AppTab.FEED && (
+              <>
+                <ZenDashboard userData={userData} onClaim={claimQuestReward} />
+                <Feed userData={userData} onExp={(n) => { handleAddExp(n); updateQuestProgress('q3', 1); }} />
+              </>
+            )}
+            {activeTab === AppTab.MISSION && <MissionControl userData={userData} onUpdate={handleUpdateUser} />}
+            {activeTab === AppTab.TUTOR && <AITutor userData={userData} onExp={(n) => { handleAddExp(n); updateQuestProgress('q2', 1); }} />}
+            {activeTab === AppTab.FOCUS && <FocusZone onExp={(n) => { handleAddExp(n); updateQuestProgress('q1', 25); }} showToast={showToast} />}
+            {activeTab === AppTab.QUIZ && <QuizArena onExp={handleAddExp} showToast={showToast} />}
+            {activeTab === AppTab.TOOLS && <StudyTools onExp={handleAddExp} />}
+            {activeTab === AppTab.RANK && <Leaderboard currentUid={userData.uid} userData={userData} />}
+            {activeTab === AppTab.PROFILE && <Profile userData={userData} onUpdate={handleUpdateUser} onToast={showToast} />}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -291,59 +303,85 @@ const RedemptionModal: React.FC<{ userData: UserProfile, onSuccess: () => void, 
 
 const ZenDashboard: React.FC<{ userData: UserProfile; onClaim: (id: string) => void }> = ({ userData, onClaim }) => {
   const isPhantom = userData.streak >= 7;
+  const streakProgress = (userData.streak % 7) / 7 * 100;
 
   return (
-    <div className="mb-12 space-y-8 animate-slide-up">
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="mb-12 space-y-8"
+    >
       <div className={`glass p-10 rounded-[4.5rem] border-white shadow-2xl transition-all duration-700 overflow-hidden relative group ${isPhantom ? 'bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 ring-8 ring-purple-500/20' : 'bg-gradient-to-br from-[#1a1c2c] to-[#0f172a]'} text-white`}>
          <div className={`absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform ${isPhantom ? 'text-purple-400' : 'text-orange-400'}`}><Flame size={200} fill="currentColor" /></div>
          
          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <div className="space-y-4">
+            <div className="space-y-6">
                <div className="flex items-center gap-3">
                   {[...Array(3)].map((_, i) => (
-                    <Heart 
-                      key={i} 
-                      size={32} 
-                      className={`transition-all duration-500 ${i < userData.lives ? 'text-rose-500 fill-current drop-shadow-[0_0_12px_rgba(244,63,94,0.8)]' : 'text-slate-600'} ${userData.lives === 1 && i === 0 ? 'animate-heartbeat' : ''}`} 
-                    />
+                    <motion.div
+                      key={i}
+                      animate={userData.lives === 1 && i === 0 ? { scale: [1, 1.2, 1] } : {}}
+                      transition={{ repeat: Infinity, duration: 0.8 }}
+                    >
+                      <Heart 
+                        size={32} 
+                        className={`transition-all duration-500 ${i < userData.lives ? 'text-rose-500 fill-current drop-shadow-[0_0_12px_rgba(244,63,94,0.8)]' : 'text-slate-600'}`} 
+                      />
+                    </motion.div>
                   ))}
                </div>
-               <h2 className={`text-4xl font-black tracking-tighter ${isPhantom ? 'text-purple-400' : 'text-orange-500'}`}>
-                  {isPhantom ? 'PHANTOM ERA' : 'STREAK SURVIVAL'}
-               </h2>
-               <p className="text-slate-400 font-bold text-sm leading-relaxed max-w-xs uppercase tracking-tight">
-                  {isPhantom ? 'Ngọn lửa vĩnh cửu đã được kích hoạt. Bạn là huyền thoại!' : 'Duy trì chuỗi ngày học để thắp sáng tri thức.'}
-               </p>
+               <div>
+                 <h2 className={`text-5xl font-black tracking-tighter ${isPhantom ? 'text-purple-400' : 'text-orange-500'}`}>
+                    {isPhantom ? 'PHANTOM ERA' : 'STREAK SURVIVAL'}
+                 </h2>
+                 <p className="text-slate-400 font-bold text-sm leading-relaxed max-w-xs uppercase tracking-tight mt-2">
+                    {isPhantom ? 'Ngọn lửa vĩnh cửu đã được kích hoạt. Bạn là huyền thoại!' : 'Duy trì chuỗi ngày học để thắp sáng tri thức.'}
+                 </p>
+               </div>
+
+               <div className="space-y-2">
+                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    <span>Tiến trình chuỗi</span>
+                    <span>{userData.streak % 7}/7 NGÀY</span>
+                  </div>
+                  <div className="h-3 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${streakProgress}%` }}
+                      className={`h-full rounded-full ${isPhantom ? 'bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)]'}`}
+                    />
+                  </div>
+               </div>
             </div>
             
-            <div className="flex flex-col items-center justify-center p-8 bg-white/5 rounded-[3rem] border border-white/10 backdrop-blur-md relative overflow-hidden">
-               <div className={`relative ${isPhantom ? 'text-purple-400' : 'text-orange-500'}`}>
-                  <Flame size={80} fill="currentColor" className={`${isPhantom ? 'animate-phantom-glow' : 'animate-pulse'}`} />
-                  <span className="absolute inset-0 flex items-center justify-center text-3xl font-black mt-4">{userData.streak}</span>
-               </div>
-               <span className="mt-4 text-[10px] font-black uppercase tracking-[0.4em] text-white/40">DAY STREAK</span>
-               {userData.streakShields > 0 && (
-                 <div className="mt-4 flex items-center gap-2 bg-indigo-600/40 px-4 py-1.5 rounded-full border border-indigo-400/50">
-                    <Shield size={14} fill="currentColor" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">{userData.streakShields} SHIELD ON</span>
-                 </div>
-               )}
+            <div className="flex flex-col items-center justify-center p-10 bg-white/5 rounded-[4rem] border border-white/10 backdrop-blur-md relative overflow-hidden group/streak">
+               <motion.div 
+                 animate={isPhantom ? { filter: ["drop-shadow(0 0 20px rgba(168, 85, 247, 0.8))", "drop-shadow(0 0 40px rgba(99, 102, 241, 1))"], scale: [1, 1.1, 1] } : { scale: [1, 1.05, 1] }}
+                 transition={{ repeat: Infinity, duration: 2 }}
+                 className={`relative ${isPhantom ? 'text-purple-400' : 'text-orange-500'}`}
+               >
+                  <Flame size={100} fill="currentColor" />
+                  <span className="absolute inset-0 flex items-center justify-center text-4xl font-black mt-4">{userData.streak}</span>
+               </motion.div>
+               <span className="mt-4 text-[11px] font-black uppercase tracking-[0.5em] text-white/40">DAY STREAK</span>
+               
+               <AnimatePresence>
+                 {userData.streakShields > 0 && (
+                   <motion.div 
+                     initial={{ opacity: 0, y: 10 }}
+                     animate={{ opacity: 1, y: 0 }}
+                     exit={{ opacity: 0, scale: 0.8 }}
+                     className="mt-6 flex items-center gap-2 bg-indigo-600/40 px-5 py-2 rounded-full border border-indigo-400/50 shadow-lg shadow-indigo-500/20"
+                   >
+                      <Shield size={16} fill="currentColor" className="text-indigo-300" />
+                      <span className="text-[11px] font-black uppercase tracking-widest">{userData.streakShields} SHIELD ON</span>
+                   </motion.div>
+                 )}
+               </AnimatePresence>
             </div>
          </div>
       </div>
-      <style>{`
-        @keyframes phantom-glow {
-          0%, 100% { filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.8)); transform: scale(1); }
-          50% { filter: drop-shadow(0 0 40px rgba(99, 102, 241, 1)); transform: scale(1.1); }
-        }
-        @keyframes heartbeat {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.3); }
-        }
-        .animate-phantom-glow { animation: phantom-glow 2s ease-in-out infinite; }
-        .animate-heartbeat { animation: heartbeat 0.8s ease-in-out infinite; }
-      `}</style>
-    </div>
+    </motion.div>
   );
 };
 
@@ -392,14 +430,24 @@ const AuthScreen: React.FC<{ onAuth: (m: LoginMethod, name?: string) => void }> 
 
 const Header: React.FC<any> = ({ onOpenMenu, activeTab, userData }) => (
   <header className="fixed top-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-2xl border-b border-slate-100/50 z-40 flex items-center justify-between px-8">
-    <button onClick={onOpenMenu} className="p-3 bg-white/50 rounded-2xl text-slate-600 hover:text-indigo-600 transition-all border border-white shadow-sm">
-        <Menu size={24} strokeWidth={2.5} />
-    </button>
+    <div className="flex items-center gap-4">
+      <button onClick={onOpenMenu} className="p-3 bg-white/50 rounded-2xl text-slate-600 hover:text-indigo-600 transition-all border border-white shadow-sm">
+          <Menu size={24} strokeWidth={2.5} />
+      </button>
+      <div className="hidden md:flex items-center gap-2 bg-orange-50 px-4 py-2 rounded-2xl border border-orange-100">
+        <Flame size={18} className="text-orange-500" fill="currentColor" />
+        <span className="text-sm font-black text-orange-600">{userData.streak}</span>
+      </div>
+    </div>
     <div className="flex flex-col items-center">
         <h1 className="font-black text-indigo-600 uppercase tracking-tighter text-xl leading-none">StudyGram</h1>
         <span className="text-[8px] font-black text-slate-300 tracking-[0.3em] mt-1 uppercase">Official Exam Hub</span>
     </div>
     <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 bg-rose-50 px-3 py-1.5 rounded-2xl border border-rose-100">
+          <Heart size={16} className="text-rose-500" fill="currentColor" />
+          <span className="text-xs font-black text-rose-600">{userData.lives}</span>
+        </div>
         <div className="relative group cursor-pointer">
             <div className={`absolute -inset-1 rounded-full blur-md opacity-70 animate-pulse ${userData.streak >= 7 ? 'bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500' : 'bg-orange-400'}`}></div>
             <img src={userData.avatar} className="relative w-10 h-10 rounded-full border-2 border-white shadow-lg" alt="avatar" />
@@ -409,7 +457,7 @@ const Header: React.FC<any> = ({ onOpenMenu, activeTab, userData }) => (
 );
 
 const BottomNav: React.FC<any> = ({ activeTab, setActiveTab }) => (
-  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-40 animate-slide-up">
+  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-40">
     <nav className="glass bg-white/90 rounded-[3rem] border-white px-4 py-3.5 flex justify-around shadow-2xl ring-1 ring-slate-100/50">
         {[
             { id: AppTab.FEED, icon: Home },
@@ -422,8 +470,19 @@ const BottomNav: React.FC<any> = ({ activeTab, setActiveTab }) => (
         ].map(tab => {
             const isActive = activeTab === tab.id;
             return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`relative p-3.5 rounded-2xl transition-all duration-300 ${isActive ? 'text-indigo-600 scale-110 bg-indigo-50 shadow-inner' : 'text-slate-300 hover:text-slate-500'}`}>
-                    <tab.icon size={26} strokeWidth={isActive ? 3 : 2} />
+                <button 
+                  key={tab.id} 
+                  onClick={() => setActiveTab(tab.id)} 
+                  className={`relative p-3.5 rounded-2xl transition-all duration-300 ${isActive ? 'text-indigo-600' : 'text-slate-300 hover:text-slate-500'}`}
+                >
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeTab"
+                        className="absolute inset-0 bg-indigo-50 rounded-2xl shadow-inner"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                    <tab.icon size={26} strokeWidth={isActive ? 3 : 2} className="relative z-10" />
                 </button>
             );
         })}

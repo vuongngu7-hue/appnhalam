@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Rocket, ChevronRight, CheckCircle, Loader2, 
   ArrowLeft, GraduationCap, Zap, Info, HelpCircle,
@@ -126,7 +127,11 @@ const MissionControl: React.FC<{ userData: UserProfile; onUpdate: (u: UserProfil
 
   if (activeExam) {
     return (
-      <div className="content-container animate-in space-y-4 px-4 pb-40">
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="content-container space-y-4 px-4 pb-40"
+      >
         <div className="bg-white/95 backdrop-blur-md p-4 sticky top-0 z-30 -mx-4 mb-4 border-b border-slate-100 flex items-center justify-between shadow-sm">
           <button onClick={() => setActiveExam(null)} className="flex items-center gap-2 text-slate-500 font-bold text-sm">
             <ArrowLeft size={16} /> THOÁT
@@ -170,9 +175,15 @@ const MissionControl: React.FC<{ userData: UserProfile; onUpdate: (u: UserProfil
             const userIdx = userAnswers[i];
             
             return (
-              <div key={i} className={`bg-white rounded-[2.5rem] p-8 border-2 shadow-sm transition-all ${
-                isReviewed ? (isCorrect ? 'border-green-200' : 'border-rose-100') : 'border-slate-50'
-              }`}>
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className={`bg-white rounded-[2.5rem] p-8 border-2 shadow-sm transition-all ${
+                  isReviewed ? (isCorrect ? 'border-green-200' : 'border-rose-100') : 'border-slate-50'
+                }`}
+              >
                 <div className="flex items-start gap-4 mb-6">
                   <span className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm ${
                     isReviewed ? (isCorrect ? 'bg-green-500 text-white' : 'bg-rose-500 text-white') : 'bg-slate-900 text-white'
@@ -226,7 +237,7 @@ const MissionControl: React.FC<{ userData: UserProfile; onUpdate: (u: UserProfil
                     </p>
                   </div>
                 )}
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -243,7 +254,7 @@ const MissionControl: React.FC<{ userData: UserProfile; onUpdate: (u: UserProfil
               {isReviewed ? 'XONG' : 'NỘP BÀI'}
            </button>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
@@ -315,35 +326,47 @@ const MissionControl: React.FC<{ userData: UserProfile; onUpdate: (u: UserProfil
           <Zap size={100} className="absolute right-[-20px] bottom-[-20px] text-white/10 group-hover:scale-125 transition-transform duration-700" />
        </div>
 
-       <div className="space-y-4">
+       <div className="space-y-4 relative">
+          <div className="absolute left-12 top-0 bottom-0 w-1 bg-slate-100 rounded-full -z-10" />
+          
           <div className="flex items-center justify-between px-2">
-             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Danh sách chương</h4>
+             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chiến dịch của bạn</h4>
              <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 flex items-center gap-2"><Timer size={12}/> Đề {questionCount} câu</span>
           </div>
-          {mission.roadmap.map((node, i) => {
-             const isLoadingThis = loadingNodeId === node.id;
-             return (
-                <button 
-                  key={node.id} 
-                  disabled={loadingNodeId !== null}
-                  onClick={() => loadExam(node.id, node.difficulty)}
-                  className={`w-full text-left clean-card p-6 rounded-[2.5rem] flex items-center gap-6 border-2 transition-all relative overflow-hidden hover:border-indigo-300 hover:bg-indigo-50/10 shadow-lg group`}
-                >
-                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black shrink-0 shadow-lg transition-all bg-indigo-600 group-hover:scale-110`}>
-                      {isLoadingThis ? <Loader2 className="animate-spin" size={20}/> : i + 1}
-                   </div>
-                   <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                         <span className="text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest bg-slate-900 text-white">
-                            {node.difficulty === 'theory' ? 'CƠ BẢN' : node.difficulty === 'practice' ? 'LUYỆN TẬP' : 'VẬN DỤNG'}
-                         </span>
-                      </div>
-                      <h5 className="font-black text-base truncate tracking-tight text-slate-800">{node.title}</h5>
-                   </div>
-                   {!isLoadingThis && <ChevronRight size={20} className="text-indigo-400 group-hover:translate-x-1 transition-transform" />}
-                </button>
-             );
-          })}
+
+          <div className="space-y-6">
+            {mission.roadmap.map((node, i) => {
+               const isLoadingThis = loadingNodeId === node.id;
+               const isCompleted = node.status === 'completed';
+               
+               return (
+                  <motion.button 
+                    key={node.id} 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    disabled={loadingNodeId !== null}
+                    onClick={() => loadExam(node.id, node.difficulty)}
+                    className={`w-full text-left bg-white p-6 rounded-[2.5rem] flex items-center gap-6 border-2 transition-all relative overflow-hidden hover:border-indigo-300 hover:bg-indigo-50/10 shadow-lg group`}
+                  >
+                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black shrink-0 shadow-lg transition-all ${isCompleted ? 'bg-green-500' : 'bg-indigo-600'} group-hover:scale-110`}>
+                        {isLoadingThis ? <Loader2 className="animate-spin" size={20}/> : (isCompleted ? <CheckCircle size={20} /> : i + 1)}
+                     </div>
+                     <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                           <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${
+                             node.difficulty === 'theory' ? 'bg-blue-500' : node.difficulty === 'practice' ? 'bg-indigo-500' : 'bg-rose-500'
+                           } text-white`}>
+                              {node.difficulty === 'theory' ? 'CƠ BẢN' : node.difficulty === 'practice' ? 'LUYỆN TẬP' : 'VẬN DỤNG'}
+                           </span>
+                        </div>
+                        <h5 className="font-black text-base truncate tracking-tight text-slate-800">{node.title}</h5>
+                     </div>
+                     {!isLoadingThis && <ChevronRight size={20} className="text-indigo-400 group-hover:translate-x-1 transition-transform" />}
+                  </motion.button>
+               );
+            })}
+          </div>
        </div>
 
        <div className="p-8 bg-slate-50 rounded-[3rem] border border-slate-100 text-center space-y-4">

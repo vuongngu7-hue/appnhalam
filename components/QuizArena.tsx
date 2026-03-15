@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Trophy, Target, Stars, ArrowRight, BrainCircuit, Users, Zap, 
   ShieldCheck, MessageSquare, Send, X, Bot, Award, Sparkles,
@@ -60,7 +61,11 @@ const QuizArena: React.FC<QuizArenaProps> = ({ onExp, showToast }) => {
 
   if (mode === 'debate') {
     return (
-      <div className="flex flex-col h-full animate-slide-in">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex flex-col h-full"
+      >
         <div className="bg-white/80 backdrop-blur-md p-4 border-b flex items-center justify-between shadow-sm sticky top-0 z-20">
           <button onClick={() => setMode('lobby')} className="p-2 text-slate-400 hover:text-indigo-600 transition-all">
             <ChevronLeft size={24} />
@@ -75,32 +80,43 @@ const QuizArena: React.FC<QuizArenaProps> = ({ onExp, showToast }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] p-5 rounded-[2rem] text-sm leading-relaxed shadow-sm transition-all ${
-                m.role === 'user' 
-                  ? 'bg-indigo-600 text-white rounded-tr-none' 
-                  : 'bg-white border border-slate-100 text-slate-800 rounded-tl-none font-medium'
-              }`}>
-                {m.text.includes('BẢNG ĐIỂM') ? (
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2 font-black text-indigo-600 border-b pb-2 mb-2">
-                            <Award size={18} /> ĐÁNH GIÁ TỪ TRỌNG TÀI AI
-                        </div>
-                        <pre className="whitespace-pre-wrap font-sans">{m.text}</pre>
-                    </div>
-                ) : m.text}
-              </div>
-            </div>
-          ))}
+          <AnimatePresence initial={false}>
+            {messages.map((m, i) => (
+              <motion.div 
+                key={i} 
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`max-w-[85%] p-5 rounded-[2rem] text-sm leading-relaxed shadow-sm transition-all ${
+                  m.role === 'user' 
+                    ? 'bg-indigo-600 text-white rounded-tr-none' 
+                    : 'bg-white border border-slate-100 text-slate-800 rounded-tl-none font-medium'
+                }`}>
+                  {m.text.includes('BẢNG ĐIỂM') ? (
+                      <div className="space-y-3">
+                          <div className="flex items-center gap-2 font-black text-indigo-600 border-b pb-2 mb-2">
+                              <Award size={18} /> ĐÁNH GIÁ TỪ TRỌNG TÀI AI
+                          </div>
+                          <pre className="whitespace-pre-wrap font-sans">{m.text}</pre>
+                      </div>
+                  ) : m.text}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
           {isTyping && (
-            <div className="flex justify-start">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex justify-start"
+            >
               <div className="bg-white border border-slate-100 p-5 rounded-[2rem] rounded-tl-none shadow-sm flex gap-2">
                 <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
                 <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.2s]"></div>
                 <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.4s]"></div>
               </div>
-            </div>
+            </motion.div>
           )}
           <div ref={chatEndRef} />
         </div>
@@ -128,12 +144,16 @@ const QuizArena: React.FC<QuizArenaProps> = ({ onExp, showToast }) => {
              <button onClick={() => setInput('Tóm tắt lại cuộc tranh biện và chấm điểm cho tôi.')} className="text-[10px] font-black text-slate-400 uppercase hover:text-indigo-600 transition-colors">Kết thúc & Chấm điểm</button>
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full gap-6 animate-slide-in max-w-2xl mx-auto pb-10">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col h-full gap-6 max-w-2xl mx-auto pb-10"
+    >
       <div className="bg-gradient-to-br from-indigo-800 via-indigo-600 to-purple-700 p-10 rounded-[3rem] text-white shadow-2xl shadow-indigo-100 relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-10 opacity-20 group-hover:scale-125 transition-transform duration-700"><BrainCircuit size={160}/></div>
         <div className="relative z-10">
@@ -174,8 +194,9 @@ const QuizArena: React.FC<QuizArenaProps> = ({ onExp, showToast }) => {
         <div className="space-y-3">
             <p className="text-xs font-bold text-slate-500 mb-4 px-1">Chọn một chủ đề để bắt đầu màn đối đầu:</p>
             {DEBATE_TOPICS.map((topic, i) => (
-                <button 
+                <motion.button 
                     key={i}
+                    whileHover={{ x: 10 }}
                     onClick={() => startDebate(topic)}
                     className="w-full flex items-center justify-between p-5 bg-white border border-slate-100 rounded-[1.8rem] hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-50 transition-all group text-left"
                 >
@@ -183,7 +204,7 @@ const QuizArena: React.FC<QuizArenaProps> = ({ onExp, showToast }) => {
                     <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 group-hover:bg-indigo-600 group-hover:text-white transition-all">
                         <ArrowRight size={18} />
                     </div>
-                </button>
+                </motion.button>
             ))}
         </div>
       </div>
@@ -194,16 +215,20 @@ const QuizArena: React.FC<QuizArenaProps> = ({ onExp, showToast }) => {
             { icon: Zap, label: "Win Rate", val: "68%", color: "text-indigo-500", bg: "bg-indigo-50" },
             { icon: Gavel, label: "Debate", val: "Level 5", color: "text-teal-500", bg: "bg-teal-50" }
         ].map((item, i) => (
-            <div key={i} className="glass p-5 rounded-[2rem] border-white shadow-sm text-center">
+            <motion.div 
+              key={i} 
+              whileHover={{ y: -5 }}
+              className="glass p-5 rounded-[2rem] border-white shadow-sm text-center"
+            >
                 <div className={`w-10 h-10 ${item.bg} ${item.color} rounded-xl flex items-center justify-center mb-3 mx-auto`}>
                     <item.icon size={20} />
                 </div>
                 <h4 className="font-bold text-slate-800 text-xs mb-1 tracking-tight">{item.val}</h4>
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.label}</p>
-            </div>
+            </motion.div>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

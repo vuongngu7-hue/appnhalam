@@ -24,7 +24,7 @@ const TOOLS_CONFIG = [
     icon: Globe, 
     fromColor: 'from-blue-500', 
     toColor: 'to-indigo-600',
-    placeholder: 'Nhập từ khóa (VD: Đề Toán 2024 Hà Nội)...',
+    placeholder: 'Nhập từ khóa bổ sung (VD: Trường Chuyên KHTN, đề thi thử)...',
     suggestions: ['Đề Toán 2024 Hà Nội', 'Đề Văn 2023 TP.HCM', 'Đề Anh 2024 Đà Nẵng']
   },
   { 
@@ -190,6 +190,7 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
   const currentToolConfig = useMemo(() => TOOLS_CONFIG.find(t => t.id === activeTool), [activeTool]);
 
   const handleRunTool = useCallback(async () => {
+    // Validate inputs
     if (activeTool !== 'exam_bank' && !input.trim()) {
        setError("Vui lòng nhập nội dung!");
        return;
@@ -208,9 +209,10 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
       let res;
       switch (activeTool) {
         case 'exam_bank':
+          // Pass all filters
           const links = await getOfficialExamLinks(filters.subject, filters.year, filters.province, filters.grade);
-          if (links.length === 0) {
-              setError("Không tìm thấy link nào. AI chưa tìm được nguồn.");
+          if (!links || links.length === 0) {
+             setError("Không tìm thấy link nào. Thử đổi năm hoặc từ khóa khác xem!");
           } else {
              setExamLinks(links);
              onExp(10);
@@ -218,24 +220,27 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
           break;
         case 'quiz_creator':
           res = await generateExamPaper(input || filters.subject, filters.grade, "practice", 10);
-          if (!res || res.length === 0) setError("AI chưa tạo được câu hỏi, hãy thử lại.");
-          else {
+          if (!res || res.length === 0) {
+             setError("AI chưa tạo được câu hỏi. Hệ thống đang quá tải, hãy thử lại!");
+          } else {
              setResult(res);
              onExp(30);
           }
           break;
         case 'essay_grader':
           res = await gradeEssay(input, subInput || 'Chủ đề tự do');
-          if (!res) setError("Lỗi chấm bài. Hãy thử lại.");
-          else {
+          if (!res) {
+             setError("Lỗi chấm bài. Hãy đảm bảo nội dung là văn bản tiếng Việt hợp lệ.");
+          } else {
              setResult(res);
              onExp(35);
           }
           break;
         case 'mindmap':
           res = await generateMindMap(input);
-          if (!res || !res.children) setError("Lỗi tạo Mindmap.");
-          else {
+          if (!res || !res.children || res.children.length === 0) {
+             setError("Không thể tạo Mindmap. Thử chủ đề đơn giản hơn.");
+          } else {
             setResult(res);
             onExp(20);
           }
@@ -247,12 +252,15 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
           break;
         case 'flashcard':
           res = await generateFlashcards(input);
-          setResult(res);
-          onExp(25);
+          if (!res || res.length === 0) setError("Không tạo được Flashcard.");
+          else {
+            setResult(res);
+            onExp(25);
+          }
           break;
       }
     } catch (err) {
-      setError("Đã có lỗi hệ thống xảy ra.");
+      setError("Đã có lỗi hệ thống xảy ra. Vui lòng thử lại!");
       console.error(err);
     } finally {
       setLoading(false);
@@ -357,136 +365,105 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
               </h2>
            </div>
 
-           <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl p-8 mb-8 relative overflow-hidden">
-              {/* Contextual Inputs */}
-              {(activeTool === 'exam_bank' || activeTool === 'quiz_creator') && (
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                   <select value={filters.year} onChange={e => setFilters({...filters, year: e.target.value})} className="bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-100">{['2024', '2023', '2022', '2021', '2020'].map(y => <option key={y} value={y}>{y}</option>)}</select>
-                   <select value={filters.subject} onChange={e => setFilters({...filters, subject: e.target.value})} className="bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-100">{['Toán học', 'Ngữ văn', 'Tiếng Anh', 'Vật lý', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lý'].map(s => <option key={s} value={s}>{s}</option>)}</select>
+           <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl p-8 mb-8">
+              {activeTool === 'exam_bank' ? (
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Môn học</label>
+                      <select value={filters.subject} onChange={e => setFilters({...filters, subject: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100">
+                         {['Toán học', 'Ngữ văn', 'Tiếng Anh', 'Vật lý', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lý'].map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Năm thi</label>
+                      <select value={filters.year} onChange={e => setFilters({...filters, year: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100">
+                         {['2024', '2023', '2022', '2021'].map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                   </div>
                 </div>
-              )}
-              
-              {activeTool === 'essay_grader' && (
-                 <input 
-                    value={subInput} 
-                    onChange={e => setSubInput(e.target.value)} 
-                    placeholder="Chủ đề bài văn (Không bắt buộc)..." 
-                    className="w-full p-4 bg-slate-50 rounded-2xl mb-4 font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 transition-all"
-                 />
-              )}
-
-              <div className="relative">
-                 <textarea 
-                   value={input} 
-                   onChange={e => { setInput(e.target.value); setError(null); }} 
-                   placeholder={currentToolConfig?.placeholder} 
-                   className="w-full h-40 bg-slate-50 rounded-2xl p-5 font-medium text-sm outline-none border-2 border-transparent focus:border-indigo-100 transition-all resize-none"
-                 />
-                 {currentToolConfig?.suggestions?.length > 0 && (
-                    <div className="absolute bottom-4 left-4 flex gap-2 overflow-x-auto max-w-[calc(100%-2rem)] no-scrollbar">
-                        {currentToolConfig?.suggestions?.map((s, i) => (
-                        <button key={i} onClick={() => setInput(s)} className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm">
-                            {s}
-                        </button>
-                        ))}
-                    </div>
-                 )}
-              </div>
-              
-              {error && (
-                <div className="mt-4 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 font-bold text-sm animate-in fade-in">
-                    <AlertCircle size={20} /> {error}
+              ) : (
+                <div className="space-y-4 mb-6">
+                   <textarea 
+                     value={input} 
+                     onChange={e => setInput(e.target.value)} 
+                     placeholder={currentToolConfig?.placeholder}
+                     className="w-full h-40 bg-slate-50 rounded-[2rem] p-6 text-lg font-bold outline-none border-2 border-transparent focus:border-indigo-100 resize-none shadow-inner"
+                   />
+                   {activeTool === 'essay_grader' && (
+                     <input 
+                       value={subInput} 
+                       onChange={e => setSubInput(e.target.value)} 
+                       placeholder="Chủ đề hoặc yêu cầu cụ thể..."
+                       className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100"
+                     />
+                   )}
                 </div>
               )}
 
               <button 
                 onClick={handleRunTool} 
-                disabled={loading} 
-                className={`mt-6 w-full py-5 rounded-2xl font-black text-white shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-3 bg-gradient-to-r ${currentToolConfig?.fromColor} ${currentToolConfig?.toColor} disabled:opacity-50`}
+                disabled={loading}
+                className="w-full py-5 bg-indigo-600 text-white rounded-[1.8rem] font-black text-lg shadow-xl hover:bg-indigo-700 transition-all disabled:opacity-50 flex justify-center items-center gap-3"
               >
-                 {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={20} fill="currentColor" />}
-                 {loading ? 'AI ĐANG XỬ LÝ...' : 'KÍCH HOẠT'}
+                 {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={24} />}
+                 {loading ? 'ĐANG XỬ LÝ...' : 'BẮT ĐẦU NGAY'}
               </button>
            </div>
 
            {/* RESULTS AREA */}
-           {(result || examLinks.length > 0) && (
-              <div className="animate-slide-up space-y-6">
-                 <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle2 size={18} className="text-green-500" />
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-400">Kết quả xử lý</span>
-                 </div>
-                 
-                 <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl p-8 overflow-hidden relative">
-                    {/* Exam Links */}
-                    {activeTool === 'exam_bank' && (
-                       <div className="space-y-3">
-                          {examLinks.map((link, i) => (
-                             <a key={i} href={link.web?.uri} target="_blank" rel="noreferrer" className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl hover:bg-indigo-50 transition-colors group">
-                                <span className="font-bold text-sm text-slate-700 group-hover:text-indigo-700 truncate max-w-[80%]">{link.web?.title}</span>
-                                <Globe size={16} className="text-slate-300 group-hover:text-indigo-500"/>
-                             </a>
-                          ))}
-                       </div>
-                    )}
-                    
-                    {/* Quiz Creator - Show Raw Preview or Download */}
-                    {activeTool === 'quiz_creator' && Array.isArray(result) && (
-                        <div className="text-center space-y-4">
-                            <p className="font-bold text-slate-700">Đã tạo thành công {result.length} câu hỏi!</p>
-                            <button onClick={() => downloadAsFile(JSON.stringify(result, null, 2), `quiz_${input || 'ai'}.json`)} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg">Download JSON</button>
-                            <div className="bg-slate-50 p-4 rounded-xl text-left h-40 overflow-y-auto border border-slate-200">
-                                <pre className="text-xs">{JSON.stringify(result[0], null, 2)}...</pre>
-                            </div>
-                        </div>
-                    )}
+           {error && (
+             <div className="p-6 bg-rose-50 border border-rose-100 rounded-[2rem] flex items-center gap-4 text-rose-600 animate-in fade-in">
+                <AlertCircle size={24} />
+                <p className="font-bold text-sm">{error}</p>
+             </div>
+           )}
 
-                    {/* Essay Grader */}
-                    {activeTool === 'essay_grader' && result && (
-                       <div className="space-y-6">
-                          <div className="flex items-center gap-6 p-6 bg-slate-50 rounded-[2rem]">
-                             <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white ${result.score >= 8 ? 'bg-green-500' : 'bg-amber-500'}`}>{result.score}</div>
-                             <div>
-                                <h4 className="font-black text-slate-800">Điểm số tổng quan</h4>
-                                <p className="text-xs text-slate-500">Dựa trên tiêu chí chấm thi THPT</p>
-                             </div>
-                          </div>
-                          <div className="prose prose-sm max-w-none">
-                             <h4 className="font-black text-indigo-600">Nhận xét chi tiết:</h4>
-                             <MarkdownText text={result.feedback} />
-                             <div className="h-px bg-slate-100 my-4"></div>
-                             <h4 className="font-black text-indigo-600">Cải thiện:</h4>
-                             <MarkdownText text={result.improvements} />
-                          </div>
-                       </div>
-                    )}
+           {loading && (
+             <div className="py-20 flex flex-col items-center gap-4 text-slate-300">
+                <Loader2 size={48} className="animate-spin" />
+                <p className="font-black text-xs uppercase tracking-[0.3em]">AI đang tính toán...</p>
+             </div>
+           )}
 
-                    {/* Other Tools Render Logic ... */}
-                    {activeTool === 'mindmap' && result && (
-                       <div className="overflow-x-auto py-8">
-                          <MindMapNode node={result} />
-                          <div className="text-center mt-8">
-                             <button onClick={() => downloadAsFile(JSON.stringify(result), "mindmap.json")} className="text-xs font-bold text-indigo-600 hover:underline">Download JSON</button>
-                          </div>
+           {result && (
+             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                {activeTool === 'flashcard' ? (
+                  <FlashcardDeck cards={result} />
+                ) : activeTool === 'mindmap' ? (
+                  <div className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-xl overflow-x-auto no-scrollbar">
+                     <MindMapNode node={result} />
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-xl">
+                     <MarkdownText text={typeof result === 'string' ? result : JSON.stringify(result, null, 2)} />
+                  </div>
+                )}
+             </div>
+           )}
+
+           {examLinks.length > 0 && (
+             <div className="grid grid-cols-1 gap-3 animate-in fade-in">
+                {examLinks.map((link, i) => (
+                  <a 
+                    key={i} 
+                    href={link.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-6 bg-white border border-slate-100 rounded-3xl hover:border-indigo-300 hover:shadow-lg transition-all group"
+                  >
+                    <div className="flex items-center gap-4">
+                       <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                          <FileText size={20} />
                        </div>
-                    )}
-                    {activeTool === 'flashcard' && Array.isArray(result) && <FlashcardDeck cards={result} />}
-                    {activeTool === 'summary' && typeof result === 'string' && (
-                       <div className="prose prose-slate max-w-none font-medium text-slate-600">
-                          <MarkdownText text={result} />
-                          <button onClick={() => navigator.clipboard.writeText(result)} className="absolute top-6 right-6 p-2 bg-slate-100 rounded-lg hover:bg-slate-200"><Copy size={16}/></button>
-                       </div>
-                    )}
-                 </div>
-              </div>
+                       <span className="font-bold text-slate-700">{link.title}</span>
+                    </div>
+                    <Download size={18} className="text-slate-300 group-hover:text-indigo-600" />
+                  </a>
+                ))}
+             </div>
            )}
         </div>
       )}
-
-      <style>{`
-        .animate-gradient-xy { background-size: 200% 200%; animation: gradient-xy 6s ease infinite; }
-        @keyframes gradient-xy { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-      `}</style>
     </div>
   );
 };
