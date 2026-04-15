@@ -59,6 +59,7 @@ export interface UserProfile {
   name: string;
   avatar: string;
   exp: number;
+  coins: number;
   bio: string;
   joinedAt: number;
   streak: number;
@@ -74,6 +75,7 @@ export interface UserProfile {
   skills: UserSkills;
   currentMission?: StudyMission;
   weakPoints: { topic: string; score: number }[];
+  inventory: { id: string; type: 'powerup' | 'shield' | 'cosmetic'; count: number }[];
 }
 
 export type PostType = 'knowledge' | 'story' | 'meme' | 'event';

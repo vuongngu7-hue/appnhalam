@@ -53,11 +53,19 @@ const cleanAndParseJSON = (text: string, fallback: any) => {
   }
 };
 
-const SYSTEM_CURRICULUM = `Bạn là Gia sư Gen Z.
+const SYSTEM_CURRICULUM = `Bạn là một Gia sư Gen Z thông minh, thân thiện và tâm lý.
 QUY TẮC:
-1. Ngôn ngữ: Teen code, mặn mòi (slay, keo lỳ, xu cà na...).
-2. Kiến thức: Chuẩn SGK 2018.
-3. OUTPUT: JSON ONLY KHI ĐƯỢC YÊU CẦU.`;
+1. Ngôn ngữ: Trẻ trung, gần gũi nhưng vẫn lịch sự và tự nhiên. Tránh lạm dụng quá đà các từ lóng (slay, keo lỳ...) nếu không cần thiết. Hãy nói chuyện như một người anh/chị khóa trên đang hướng dẫn em mình.
+2. Kiến thức: Luôn bám sát chương trình Giáo dục phổ thông mới (SGK 2018). Giải thích dễ hiểu, có ví dụ thực tế.
+3. Phong cách: Khuyến khích, động viên người học. Có thể dùng icon một cách tinh tế.
+4. OUTPUT: Chỉ trả về JSON khi được yêu cầu cụ thể.`;
+
+const SYSTEM_SERIOUS = `Bạn là một Giáo sư/Chuyên gia giáo dục hàng đầu, cực kỳ nghiêm túc, chuyên sâu và chi tiết.
+QUY TẮC:
+1. Ngôn ngữ: Trang trọng, học thuật, chính xác tuyệt đối. Không sử dụng từ lóng hay ngôn ngữ teen.
+2. Kiến thức: Cung cấp thông tin chuyên sâu, đa chiều, có dẫn chứng hoặc giải thích cặn kẽ các khái niệm phức tạp.
+3. Cấu trúc: Trình bày khoa học, rõ ràng (sử dụng bullet points, tiêu đề nếu cần).
+4. Mục tiêu: Giúp người học hiểu sâu bản chất vấn đề một cách học thuật nhất.`;
 
 // --- 1. KHO ĐỀ (FIXED SEARCH LOGIC) ---
 // Chuyển sang chiến thuật: Text Prompt -> Parse Markdown & Metadata
@@ -106,7 +114,7 @@ export const getOfficialExamLinks = async (subject: string, year: string, provin
 };
 
 // --- 2. TẠO ĐỀ THI (FIXED SCHEMA) ---
-export const generateExamPaper = async (subject: string, grade: string, difficulty: string, count: number = 20): Promise<any[]> => {
+export const generateExamPaper = async (subject: string, grade: string, difficulty: string, count: number = 20, isSerious: boolean = false): Promise<any[]> => {
   const ai = getAIInstance();
   
   const examSchema: Schema = {
@@ -126,9 +134,10 @@ export const generateExamPaper = async (subject: string, grade: string, difficul
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Tạo ${count} câu trắc nghiệm môn ${subject} lớp ${grade}, độ khó ${difficulty}.
+      contents: `Tạo ${count} câu trắc nghiệm môn ${subject} lớp ${grade}, độ khó ${difficulty}. Hãy đảm bảo các câu hỏi có tính phân hóa cao và lời giải thích cực kỳ chi tiết, học thuật.
       Output JSON thuần túy. KHÔNG MARKDOWN.`,
       config: {
+        systemInstruction: isSerious ? SYSTEM_SERIOUS : SYSTEM_CURRICULUM,
         responseMimeType: "application/json",
         responseSchema: examSchema
       }
@@ -142,7 +151,7 @@ export const generateExamPaper = async (subject: string, grade: string, difficul
 };
 
 // --- 3. CHẤM VĂN (FIXED SCHEMA) ---
-export const gradeEssay = async (essay: string, topic: string) => {
+export const gradeEssay = async (essay: string, topic: string, isSerious: boolean = false) => {
   const ai = getAIInstance();
 
   const gradeSchema: Schema = {
@@ -158,9 +167,10 @@ export const gradeEssay = async (essay: string, topic: string) => {
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Chấm bài văn: "${essay}" (Đề: ${topic}).
+      contents: `Chấm bài văn: "${essay}" (Đề: ${topic}). Hãy đưa ra nhận xét chuyên sâu về cấu trúc, từ vựng và tư duy nghị luận.
       Output JSON: {score, feedback, improvements}`,
       config: {
+        systemInstruction: isSerious ? SYSTEM_SERIOUS : SYSTEM_CURRICULUM,
         responseMimeType: "application/json",
         responseSchema: gradeSchema
       }
@@ -186,19 +196,19 @@ export const generateExamRoadmap = async (grade: string, subject: string): Promi
   } catch (e) { return { roadmap: [] }; }
 };
 
-export const getTutorResponse = async (msg: string) => {
+export const getTutorResponse = async (msg: string, isSerious: boolean = false) => {
   const ai = getAIInstance();
   try {
     const res = await ai.models.generateContent({
       model: FLASH_MODEL,
       contents: msg,
-      config: { systemInstruction: SYSTEM_CURRICULUM }
+      config: { systemInstruction: isSerious ? SYSTEM_SERIOUS : SYSTEM_CURRICULUM }
     });
     return res.text || "Mạng lag quá ní ơi, hỏi lại đi!";
   } catch (e) { return "Lỗi kết nối AI."; }
 };
 
-export const analyzeStudyImage = async (base64Image: string, prompt: string) => {
+export const analyzeStudyImage = async (base64Image: string, prompt: string, isSerious: boolean = false) => {
   const ai = getAIInstance();
   try {
     const res = await ai.models.generateContent({
@@ -209,7 +219,7 @@ export const analyzeStudyImage = async (base64Image: string, prompt: string) => 
           { text: prompt }
         ]
       },
-      config: { systemInstruction: SYSTEM_CURRICULUM }
+      config: { systemInstruction: isSerious ? SYSTEM_SERIOUS : SYSTEM_CURRICULUM }
     });
     return res.text || "Không đọc được ảnh.";
   } catch (e) { return "Lỗi xử lý ảnh."; }
@@ -233,7 +243,7 @@ export const getDebateResponse = async (history: any[], topic: string) => {
     const res = await ai.models.generateContent({
       model: FLASH_MODEL,
       contents: history.map(h => ({ role: h.role === 'ai' ? 'model' : 'user', parts: [{ text: h.text }] })),
-      config: { systemInstruction: `Tranh biện về: ${topic}. Gay gắt, hài hước.` }
+      config: { systemInstruction: `Bạn đang trong một cuộc tranh biện về chủ đề: "${topic}". Hãy đưa ra các lập luận sắc bén, logic nhưng vẫn giữ phong cách trẻ trung, có chút hài hước và lôi cuốn. Đừng quá gay gắt nhưng phải bảo vệ vững chắc quan điểm của mình.` }
     });
     return res.text || "";
   } catch (e) { return "AI đang bận suy nghĩ..."; }
@@ -244,7 +254,7 @@ export const checkVibePost = async (content: string) => {
   try {
     const res = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Vibe check: "${content}". JSON: {comment}`,
+      contents: `Vibe check bài đăng này: "${content}". Hãy đưa ra một lời nhận xét ngắn gọn, tự nhiên và thân thiện. JSON: {comment}`,
       config: { responseMimeType: "application/json" }
     });
     return cleanAndParseJSON(res.text || '{}', { comment: "Vibe đỉnh!" });
@@ -256,7 +266,7 @@ export const getOracleReading = async () => {
   try {
     const res = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Bốc bài Tarot học tập. JSON: {cardName, rarity, message, luckyItem, buff}`,
+      contents: `Bốc một lá bài Tarot cho việc học tập hôm nay. Hãy đưa ra lời khuyên sâu sắc và tích cực. JSON: {cardName, rarity, message, luckyItem, buff}`,
       config: { responseMimeType: "application/json" }
     });
     return cleanAndParseJSON(res.text || '{}', null);
@@ -266,34 +276,42 @@ export const getOracleReading = async () => {
 export const suggestHashtags = async (content: string) => ["study", "genz", "flex"];
 export const roastOrToast = async (user: any, mode: string) => {
     const ai = getAIInstance();
+    const prompt = mode === 'roast' 
+        ? `Hãy "roast" (nhận xét hài hước, châm chọc nhẹ nhàng) profile học tập này một cách duyên dáng, không thô tục: ${JSON.stringify(user)}`
+        : `Hãy "toast" (khen ngợi, động viên) profile học tập này một cách chân thành và ấm áp: ${JSON.stringify(user)}`;
+    
     try {
         const res = await ai.models.generateContent({
             model: FLASH_MODEL,
-            contents: `${mode} profile này: ${JSON.stringify(user)}.`,
+            contents: prompt,
         });
         return res.text;
     } catch(e) { return "AI đang bận."; }
 };
 export const getChampionTip = async (name: string) => "Học đi đôi với hành!";
 
-export const generateMindMap = async (topic: string) => {
+export const generateMindMap = async (topic: string, isSerious: boolean = false) => {
   const ai = getAIInstance();
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Tạo Mindmap về "${topic}". JSON: {root, children: [{name, children}]}. Max 3 levels.`,
-      config: { responseMimeType: "application/json" }
+      contents: `Tạo Mindmap chuyên sâu về "${topic}". JSON: {root, children: [{name, children}]}. Max 3 levels.`,
+      config: { 
+        systemInstruction: isSerious ? SYSTEM_SERIOUS : SYSTEM_CURRICULUM,
+        responseMimeType: "application/json" 
+      }
     });
     return cleanAndParseJSON(response.text || '{}', { root: "Lỗi", children: [] });
   } catch (e) { return { root: "Lỗi kết nối", children: [] }; }
 };
 
-export const summarizeText = async (text: string) => {
+export const summarizeText = async (text: string, isSerious: boolean = false) => {
   const ai = getAIInstance();
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Tóm tắt: ${text}`,
+      contents: `Tóm tắt văn bản sau đây: ${text}`,
+      config: { systemInstruction: isSerious ? SYSTEM_SERIOUS : SYSTEM_CURRICULUM }
     });
     return response.text;
   } catch (e) { return "Lỗi tóm tắt."; }
@@ -309,13 +327,16 @@ export const downloadAsFile = (content: string, filename: string) => {
   URL.revokeObjectURL(url);
 };
 
-export const generateFlashcards = async (topic: string) => {
+export const generateFlashcards = async (topic: string, isSerious: boolean = false) => {
   const ai = getAIInstance();
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Tạo 10 flashcard: "${topic}". JSON: [{front, back}]`,
-      config: { responseMimeType: "application/json" }
+      contents: `Tạo 10 flashcard học thuật về: "${topic}". JSON: [{front, back}]`,
+      config: { 
+        systemInstruction: isSerious ? SYSTEM_SERIOUS : SYSTEM_CURRICULUM,
+        responseMimeType: "application/json" 
+      }
     });
     return cleanAndParseJSON(response.text || "[]", []);
   } catch (e) { return []; }
