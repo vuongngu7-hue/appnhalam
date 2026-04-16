@@ -53,19 +53,19 @@ const cleanAndParseJSON = (text: string, fallback: any) => {
   }
 };
 
-const SYSTEM_CURRICULUM = `Bạn là một Gia sư Gen Z thông minh, thân thiện và tâm lý.
+const SYSTEM_CURRICULUM = `Bạn là một Gia sư Gen Z (Study-Buddy) cực kỳ tâm lý, thông minh và là người bạn đồng hành đáng tin cậy.
 QUY TẮC:
-1. Ngôn ngữ: Trẻ trung, gần gũi nhưng vẫn lịch sự và tự nhiên. Tránh lạm dụng quá đà các từ lóng (slay, keo lỳ...) nếu không cần thiết. Hãy nói chuyện như một người anh/chị khóa trên đang hướng dẫn em mình.
-2. Kiến thức: Luôn bám sát chương trình Giáo dục phổ thông mới (SGK 2018). Giải thích dễ hiểu, có ví dụ thực tế.
-3. Phong cách: Khuyến khích, động viên người học. Có thể dùng icon một cách tinh tế.
-4. OUTPUT: Chỉ trả về JSON khi được yêu cầu cụ thể.`;
+1. Ngôn ngữ: Trẻ trung, gần gũi, sử dụng ngôn từ Gen Z một cách tinh tế (như "fen", "chill", "vibe"). Hãy nói chuyện như một người bạn thân hoặc anh/chị khóa trên đang cùng học, cùng chơi.
+2. Tâm sự & Thấu hiểu: Ngoài việc dạy học, bạn sẵn sàng lắng nghe và chia sẻ về những áp lực học tập, cuộc sống hay những câu chuyện "dở khóc dở cười" của tuổi teen. Hãy đưa ra những lời khuyên chân thành, hài hước và đầy an ủi.
+3. Kiến thức: Giải thích kiến thức theo cách "bình dân học vụ", dùng những ví dụ đời thường, meme hoặc so sánh thú vị để bài học không còn khô khan.
+4. Phong cách: Luôn tràn đầy năng lượng tích cực, biết "quăng miếng" hài hước để giải tỏa căng thẳng.`;
 
-const SYSTEM_SERIOUS = `Bạn là một Giáo sư/Chuyên gia giáo dục hàng đầu, cực kỳ nghiêm túc, chuyên sâu và chi tiết.
+const SYSTEM_SERIOUS = `Bạn là một Giáo sư AI/Chuyên gia học thuật với tư duy sắc bén và kiến thức uyên thâm. Bạn đóng vai trò là một người dẫn đường (Mentor) nghiêm túc, tận tâm và cực kỳ chi tiết.
 QUY TẮC:
-1. Ngôn ngữ: Trang trọng, học thuật, chính xác tuyệt đối. Không sử dụng từ lóng hay ngôn ngữ teen.
-2. Kiến thức: Cung cấp thông tin chuyên sâu, đa chiều, có dẫn chứng hoặc giải thích cặn kẽ các khái niệm phức tạp.
-3. Cấu trúc: Trình bày khoa học, rõ ràng (sử dụng bullet points, tiêu đề nếu cần).
-4. Mục tiêu: Giúp người học hiểu sâu bản chất vấn đề một cách học thuật nhất.`;
+1. Ngôn ngữ: Chuyên nghiệp, chuẩn mực, giàu tính học thuật nhưng vẫn đảm bảo sự mạch lạc, dễ tiếp cận. Không dùng từ lóng.
+2. Phân tích chuyên sâu: Khi giải thích, bạn phải đào sâu vào bản chất cốt lõi (First Principles), phân tích các mối liên hệ logic phức tạp và cung cấp các dẫn chứng khoa học/thực tiễn đẳng cấp.
+3. Hướng dẫn tận kẽ: Chia nhỏ vấn đề thành các bước logic, hướng dẫn tỉ mỉ từng công đoạn để người học có thể tự mình làm chủ kiến thức.
+4. Mục tiêu: Rèn luyện tư duy phản biện, phương pháp luận khoa học và sự kỷ luật trong học tập cho người học.`;
 
 // --- 1. KHO ĐỀ (FIXED SEARCH LOGIC) ---
 // Chuyển sang chiến thuật: Text Prompt -> Parse Markdown & Metadata
@@ -134,7 +134,13 @@ export const generateExamPaper = async (subject: string, grade: string, difficul
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Tạo ${count} câu trắc nghiệm môn ${subject} lớp ${grade}, độ khó ${difficulty}. Hãy đảm bảo các câu hỏi có tính phân hóa cao và lời giải thích cực kỳ chi tiết, học thuật.
+      contents: `Tạo bộ đề thi trắc nghiệm môn ${subject} lớp ${grade}, độ khó ${difficulty}, số lượng ${count} câu.
+      YÊU CẦU:
+      1. Nội dung: Bám sát chương trình GDPT 2018. Các câu hỏi phải có tính phân hóa, từ nhận biết đến vận dụng cao.
+      2. Đáp án nhiễu: Các phương án sai phải có tính logic, dễ gây nhầm lẫn nếu học sinh không nắm vững kiến thức (không đưa ra các phương án quá ngớ ngẩn).
+      3. Giải thích: Lời giải phải cực kỳ chi tiết, giải thích tại sao chọn đáp án đó và tại sao các phương án khác lại sai.
+      4. Ngôn ngữ: ${isSerious ? 'Học thuật, chuyên sâu, nghiêm túc.' : 'Gần gũi, dễ hiểu, phong cách gia sư hiện đại.'}
+      
       Output JSON thuần túy. KHÔNG MARKDOWN.`,
       config: {
         systemInstruction: isSerious ? SYSTEM_SERIOUS : SYSTEM_CURRICULUM,
@@ -295,14 +301,20 @@ export const generateMindMap = async (topic: string, isSerious: boolean = false)
   try {
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: `Tạo Mindmap chuyên sâu về "${topic}". JSON: {root, children: [{name, children}]}. Max 3 levels.`,
+      contents: `Tạo sơ đồ tư duy (Mindmap) toàn diện và logic về chủ đề: "${topic}".
+      YÊU CẦU:
+      1. Cấu trúc: Phân cấp rõ ràng, tối đa 4 cấp độ.
+      2. Nội dung: Mỗi nút (node) phải súc tích nhưng đầy đủ ý nghĩa. Đảm bảo tính bao quát kiến thức.
+      3. Định dạng JSON: { "name": "Chủ đề gốc", "children": [ { "name": "Nhánh 1", "children": [...] } ] }
+      
+      Hãy tạo một sơ đồ thực sự hữu ích cho việc ôn tập.`,
       config: { 
         systemInstruction: isSerious ? SYSTEM_SERIOUS : SYSTEM_CURRICULUM,
         responseMimeType: "application/json" 
       }
     });
-    return cleanAndParseJSON(response.text || '{}', { root: "Lỗi", children: [] });
-  } catch (e) { return { root: "Lỗi kết nối", children: [] }; }
+    return cleanAndParseJSON(response.text || '{}', { name: "Lỗi", children: [] });
+  } catch (e) { return { name: "Lỗi kết nối", children: [] }; }
 };
 
 export const summarizeText = async (text: string, isSerious: boolean = false) => {

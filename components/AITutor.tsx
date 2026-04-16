@@ -74,7 +74,9 @@ const AITutor: React.FC<{ userData: UserProfile; onExp: (amount: number) => void
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-indigo-600 rounded-[1.2rem] flex items-center justify-center text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] animate-float"><Bot size={28} /></div>
           <div>
-            <h3 className="font-black text-white tracking-tight neon-text">AI Tutor Supreme</h3>
+            <h3 className="font-black text-white tracking-tight neon-text">
+              {isSeriousMode ? 'AI Expert Mentor' : 'AI Study Buddy'}
+            </h3>
             <div className="flex items-center gap-2 mt-1">
                 <span className="text-[9px] text-green-400 font-black uppercase tracking-widest flex items-center gap-1 drop-shadow-[0_0_5px_rgba(74,222,128,0.8)]"><Zap size={10} fill="currentColor"/> Online</span>
                 <button 
@@ -85,9 +87,9 @@ const AITutor: React.FC<{ userData: UserProfile; onExp: (amount: number) => void
                 </button>
                 <button 
                   onClick={() => setIsSeriousMode(!isSeriousMode)}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black transition-all ${isSeriousMode ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.3)]' : 'bg-slate-800 text-slate-400 border border-white/10'}`}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black transition-all ${isSeriousMode ? 'bg-indigo-500 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]' : 'bg-slate-800 text-slate-400 border border-white/10'}`}
                 >
-                  <BrainCircuit size={10}/> {isSeriousMode ? 'CHUYÊN GIA ON' : 'GIA SƯ'}
+                  <BrainCircuit size={10}/> {isSeriousMode ? 'CHUYÊN GIA' : 'TÂM SỰ'}
                 </button>
             </div>
           </div>
@@ -126,7 +128,7 @@ const AITutor: React.FC<{ userData: UserProfile; onExp: (amount: number) => void
             value={input} 
             onChange={e => setInput(e.target.value)} 
             onKeyDown={e => e.key === 'Enter' && handleSend()} 
-            placeholder={isSeriousMode ? "Nhập câu hỏi học thuật cần giải đáp chi tiết..." : "Hỏi gì đi fen, tui trả lời ngắn gọn..."} 
+            placeholder={isSeriousMode ? "Nhập vấn đề cần phân tích chuyên sâu..." : "Tâm sự hoặc hỏi bài đi fen..."} 
             className="flex-1 bg-transparent px-2 py-2 outline-none font-normal text-white text-sm placeholder:text-slate-500 placeholder:font-normal"
           />
           <button 

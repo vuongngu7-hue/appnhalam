@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import { 
   Plus, Heart, Sparkles, MessageSquare, X, Send, 
-  ShieldCheck, Share2, Flame, Zap
+  ShieldCheck, Share2, Flame, Zap, Image as ImageIcon, Trash2,
+  Camera
 } from 'lucide-react';
 import { Post, UserProfile, PostType } from '../types';
 import { checkVibePost, suggestHashtags } from '../services/geminiService';
@@ -60,7 +61,8 @@ const Feed: React.FC<{ userData: UserProfile; onExp: (n: number) => void }> = ({
       const newPost: Post = {
         id: Date.now().toString(), uid: userData.uid, userName: userData.name, avatar: userData.avatar,
         content: data.content!, category: data.category!, type: data.type || 'knowledge', mood: data.mood || '📚',
-        createdAt: Date.now(), likes: [], comments: [], hashtags, aiAnalysis: vibeData.comment
+        createdAt: Date.now(), likes: [], comments: [], hashtags, aiAnalysis: vibeData.comment,
+        image: data.image
       };
       
       setPosts(prev => [newPost, ...prev]);
@@ -94,6 +96,12 @@ const Feed: React.FC<{ userData: UserProfile; onExp: (n: number) => void }> = ({
     );
     onExp(5);
   }, [userData.name, userData.avatar, onExp]);
+
+  const handleDeletePost = useCallback((id: string) => {
+    if (window.confirm('Bạn có chắc muốn xóa bài viết này?')) {
+      setPosts(prev => prev.filter(p => p.id !== id));
+    }
+  }, []);
 
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] animate-slide-up max-w-2xl mx-auto w-full">
@@ -132,6 +140,7 @@ const Feed: React.FC<{ userData: UserProfile; onExp: (n: number) => void }> = ({
             userData={userData} 
             onLike={handleLike} 
             onComment={handleComment} 
+            onDelete={handleDeletePost}
           />
         ))}
         {filteredPosts.length === 0 && (
@@ -147,7 +156,7 @@ const Feed: React.FC<{ userData: UserProfile; onExp: (n: number) => void }> = ({
 };
 
 // Optimized PostCard with Custom Comparison to prevent re-renders when parent state (like EXP) changes
-const PostCard = memo(({ post, userData, onLike, onComment }: { post: Post, userData: UserProfile, onLike: (id: string) => void, onComment: (id: string, txt: string) => void }) => {
+const PostCard = memo(({ post, userData, onLike, onComment, onDelete }: { post: Post, userData: UserProfile, onLike: (id: string) => void, onComment: (id: string, txt: string) => void, onDelete: (id: string) => void }) => {
   const [showComments, setShowComments] = useState(false);
   const [input, setInput] = useState('');
   const [justShared, setJustShared] = useState(false);
@@ -192,6 +201,12 @@ const PostCard = memo(({ post, userData, onLike, onComment }: { post: Post, user
         <MarkdownText text={post.content} />
       </div>
 
+      {post.image && (
+        <div className="mb-6 rounded-[2rem] overflow-hidden border border-white/10 shadow-inner">
+          <img src={post.image} className="w-full h-auto max-h-[400px] object-cover" loading="lazy" />
+        </div>
+      )}
+
       {post.aiAnalysis && (
         <div className="p-5 bg-indigo-500/10 rounded-[2rem] mb-6 border border-indigo-500/20 flex gap-4 items-start shadow-inner">
            <div className="w-8 h-8 bg-indigo-500/20 rounded-[0.8rem] flex items-center justify-center text-indigo-400 shadow-sm shrink-0 border border-indigo-500/30"><Sparkles size={16} strokeWidth={2.5}/></div>
@@ -213,6 +228,11 @@ const PostCard = memo(({ post, userData, onLike, onComment }: { post: Post, user
         <button onClick={handleShare} className={`flex items-center gap-2 text-sm font-black transition-colors ${justShared ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]' : 'text-slate-400 hover:text-cyan-400'}`}>
           <Share2 size={22} strokeWidth={2.5} /> 
         </button>
+        {(post.uid === userData.uid || userData.isAdmin) && (
+          <button onClick={() => onDelete(post.id)} className="flex items-center gap-2 text-sm font-black text-slate-400 hover:text-rose-500 transition-colors ml-auto">
+            <Trash2 size={20} strokeWidth={2.5} />
+          </button>
+        )}
       </div>
 
       {showComments && (
@@ -244,6 +264,18 @@ const PostCard = memo(({ post, userData, onLike, onComment }: { post: Post, user
 const CreatePostModal: React.FC<any> = memo(({ onClose, onSubmit, userData, isAnalyzing }) => {
   const [content, setContent] = useState('');
   const [mood, setMood] = useState('📚');
+  const [image, setImage] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setImage(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-6 transform-gpu">
       <div className="glass-card w-full max-w-xl rounded-[4rem] p-8 space-y-6 animate-slide-up relative shadow-2xl border border-white/10">
@@ -251,8 +283,38 @@ const CreatePostModal: React.FC<any> = memo(({ onClose, onSubmit, userData, isAn
           <h3 className="text-2xl font-black text-white tracking-tighter neon-text">Đăng bài 🧬</h3>
           <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-colors"><X size={20}/></button>
         </div>
-        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Fen học được gì hay ho?" className="w-full h-40 bg-slate-900/50 rounded-[2.5rem] p-6 text-lg font-medium text-white outline-none border border-white/10 focus:border-indigo-500/50 resize-none shadow-inner placeholder:text-slate-500 transition-colors" />
-        <button onClick={() => onSubmit({ content, mood, category: 'Kiến thức', type: 'knowledge' })} disabled={!content.trim() || isAnalyzing} className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-lg shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:bg-indigo-500 transition-all disabled:opacity-50 flex justify-center items-center gap-2">
+        
+        <div className="space-y-4">
+          <textarea 
+            value={content} 
+            onChange={e => setContent(e.target.value)} 
+            placeholder="Fen học được gì hay ho?" 
+            className="w-full h-32 bg-slate-900/50 rounded-[2.5rem] p-6 text-lg font-medium text-white outline-none border border-white/10 focus:border-indigo-500/50 resize-none shadow-inner placeholder:text-slate-500 transition-colors" 
+          />
+          
+          {image && (
+            <div className="relative inline-block animate-in zoom-in duration-300">
+              <img src={image} className="w-24 h-24 rounded-2xl border-2 border-white/20 shadow-lg object-cover" />
+              <button onClick={() => setImage(null)} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-lg shadow-lg"><X size={12}/></button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-white/10 text-slate-300 rounded-xl border border-white/10 transition-all text-xs font-black uppercase tracking-widest"
+            >
+              <Camera size={16} /> {image ? 'Đổi ảnh' : 'Thêm ảnh'}
+            </button>
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+          </div>
+        </div>
+
+        <button 
+          onClick={() => onSubmit({ content, mood, category: 'Kiến thức', type: 'knowledge', image })} 
+          disabled={!content.trim() || isAnalyzing} 
+          className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-lg shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:bg-indigo-500 transition-all disabled:opacity-50 flex justify-center items-center gap-2"
+        >
            {isAnalyzing && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
           {isAnalyzing ? 'ĐANG PHÂN TÍCH...' : 'ĐĂNG NGAY 🚀'}
         </button>

@@ -7,7 +7,7 @@ import {
   Smile, ImageIcon, Network, ChevronDown, GraduationCap, Map,
   CheckCircle2, AlertCircle, Search, Globe, Filter,
   Gem, Eye, Moon, BrainCircuit, PenTool, Layers, Undo2, ArrowRight,
-  History, Command
+  History, Command, X, Send, Camera
 } from 'lucide-react';
 import { 
   summarizeText, generateFlashcards, downloadAsFile, 
@@ -98,30 +98,46 @@ const ToolCard = memo(({ tool, onClick }: { tool: any, onClick: (id: string) => 
 
 const MindMapNode = memo(({ node, depth = 0 }: { node: any; depth?: number }) => {
   const [expanded, setExpanded] = useState(true);
-  const colors = ['bg-indigo-600 shadow-[0_0_15px_rgba(99,102,241,0.5)]', 'bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]', 'bg-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.5)]', 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]'];
+  const colors = [
+    'bg-indigo-600 shadow-[0_0_20px_rgba(99,102,241,0.4)] border-indigo-400', 
+    'bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.3)] border-purple-300', 
+    'bg-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.3)] border-pink-300', 
+    'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)] border-amber-300'
+  ];
   const color = colors[depth % colors.length];
 
   if (!node) return null;
 
   return (
-    <div className="flex flex-col items-center relative animate-in fade-in zoom-in duration-300">
+    <div className="flex flex-col items-center relative animate-in fade-in zoom-in duration-500">
       <div 
         onClick={() => setExpanded(!expanded)}
-        className={`relative z-10 px-6 py-3 rounded-2xl text-white font-bold cursor-pointer transition-all hover:scale-105 active:scale-95 flex items-center gap-2 border border-white/20 ${color} ${depth === 0 ? 'text-xl py-4 px-8 mb-6' : 'text-sm mb-4'}`}
+        className={`relative z-10 px-6 py-3 rounded-2xl text-white font-black cursor-pointer transition-all hover:scale-105 active:scale-95 flex items-center gap-3 border-2 shadow-lg ${color} ${depth === 0 ? 'text-xl py-5 px-10 mb-10' : 'text-xs mb-6'}`}
       >
-        {node.name || node.root}
-        {node.children?.length > 0 && <ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`}/>}
+        <span className="whitespace-nowrap">{node.name || node.root}</span>
+        {node.children?.length > 0 && (
+          <div className={`p-1 rounded-full bg-white/20 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}>
+            <ChevronDown size={depth === 0 ? 20 : 14} />
+          </div>
+        )}
       </div>
       
       {expanded && node.children?.length > 0 && (
-        <div className="flex justify-center gap-8 relative pt-4">
-           <div className="absolute top-0 left-1/2 w-0.5 h-4 bg-slate-600 -translate-x-1/2"></div>
+        <div className="flex justify-center gap-6 relative pt-4">
+           {/* Vertical line from parent */}
+           <div className="absolute top-0 left-1/2 w-0.5 h-4 bg-slate-700 -translate-x-1/2"></div>
+           
+           {/* Horizontal bridge line */}
            {node.children.length > 1 && (
-             <div className="absolute top-0 left-[calc(50%/2)] right-[calc(50%/2)] h-0 border-t-2 border-slate-600 w-[calc(100%-4rem)] left-8"></div>
+             <div className="absolute top-4 left-0 right-0 flex justify-center">
+                <div className="h-0.5 bg-slate-700" style={{ width: `calc(100% - ${100 / node.children.length}%)` }}></div>
+             </div>
            )}
+           
            {node.children.map((child: any, i: number) => (
             <div key={i} className="flex flex-col items-center relative">
-               <div className="w-0.5 h-4 bg-slate-600 absolute -top-4"></div>
+               {/* Vertical line to child */}
+               <div className="w-0.5 h-4 bg-slate-700 absolute -top-0"></div>
                <MindMapNode node={child} depth={depth + 1} />
             </div>
           ))}
@@ -184,7 +200,9 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [examLinks, setExamLinks] = useState<any[]>([]);
-  const [filters, setFilters] = useState({ year: '2024', subject: 'Toán học', province: 'Hà Nội', grade: '12' });
+  const [filters, setFilters] = useState({ year: '2024', subject: 'Toán học', province: 'Hà Nội', grade: '12', difficulty: 'Trung bình' });
+  const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
+  const [isQuizSubmitted, setIsQuizSubmitted] = useState(false);
   const [oracleCard, setOracleCard] = useState<any>(null);
   const [showOracle, setShowOracle] = useState(false);
 
@@ -192,7 +210,7 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
 
   const handleRunTool = useCallback(async () => {
     // Validate inputs
-    if (activeTool !== 'exam_bank' && !input.trim()) {
+    if (activeTool !== 'exam_bank' && !input.trim() && activeTool !== 'quiz_creator') {
        setError("Vui lòng nhập nội dung!");
        return;
     }
@@ -205,12 +223,13 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
     setResult(null);
     setExamLinks([]);
     setError(null);
+    setUserAnswers({});
+    setIsQuizSubmitted(false);
 
     try {
       let res;
       switch (activeTool) {
         case 'exam_bank':
-          // Pass all filters
           const links = await getOfficialExamLinks(filters.subject, filters.year, filters.province, filters.grade);
           if (!links || links.length === 0) {
              setError("Không tìm thấy link nào. Thử đổi năm hoặc từ khóa khác xem!");
@@ -220,7 +239,7 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
           }
           break;
         case 'quiz_creator':
-          res = await generateExamPaper(input || filters.subject, filters.grade, "practice", 10, isSeriousMode);
+          res = await generateExamPaper(input || filters.subject, filters.grade, filters.difficulty, 10, isSeriousMode);
           if (!res || res.length === 0) {
              setError("AI chưa tạo được câu hỏi. Hệ thống đang quá tải, hãy thử lại!");
           } else {
@@ -291,6 +310,8 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
     setExamLinks([]);
     setSubInput('');
     setError(null);
+    setUserAnswers({});
+    setIsQuizSubmitted(false);
   }, []);
 
   return (
@@ -396,19 +417,42 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
            </div>
 
            <div className="glass-card rounded-[2.5rem] border border-white/10 shadow-xl p-8 mb-8">
-              {activeTool === 'exam_bank' ? (
-                <div className="grid grid-cols-2 gap-4 mb-6">
+              {activeTool === 'exam_bank' || activeTool === 'quiz_creator' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Môn học</label>
-                      <select value={filters.subject} onChange={e => setFilters({...filters, subject: e.target.value})} className="w-full p-4 bg-slate-900/50 text-white rounded-2xl font-medium outline-none border border-white/10 focus:border-indigo-500/50 transition-colors">
-                         {['Toán học', 'Ngữ văn', 'Tiếng Anh', 'Vật lý', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lý'].map(s => <option key={s} value={s} className="bg-slate-900">{s}</option>)}
-                      </select>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Môn học / Chủ đề</label>
+                      {activeTool === 'quiz_creator' ? (
+                        <input 
+                          value={input} 
+                          onChange={e => setInput(e.target.value)} 
+                          placeholder="Toán, Lý, Hóa, Lịch sử..."
+                          className="w-full p-4 bg-slate-900/50 text-white rounded-2xl font-medium outline-none border border-white/10 focus:border-indigo-500/50 transition-colors"
+                        />
+                      ) : (
+                        <select value={filters.subject} onChange={e => setFilters({...filters, subject: e.target.value})} className="w-full p-4 bg-slate-900/50 text-white rounded-2xl font-medium outline-none border border-white/10 focus:border-indigo-500/50 transition-colors">
+                           {['Toán học', 'Ngữ văn', 'Tiếng Anh', 'Vật lý', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lý'].map(s => <option key={s} value={s} className="bg-slate-900">{s}</option>)}
+                        </select>
+                      )}
                    </div>
-                   <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Năm thi</label>
-                      <select value={filters.year} onChange={e => setFilters({...filters, year: e.target.value})} className="w-full p-4 bg-slate-900/50 text-white rounded-2xl font-medium outline-none border border-white/10 focus:border-indigo-500/50 transition-colors">
-                         {['2024', '2023', '2022', '2021'].map(y => <option key={y} value={y} className="bg-slate-900">{y}</option>)}
-                      </select>
+                   <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Lớp</label>
+                        <select value={filters.grade} onChange={e => setFilters({...filters, grade: e.target.value})} className="w-full p-4 bg-slate-900/50 text-white rounded-2xl font-medium outline-none border border-white/10 focus:border-indigo-500/50 transition-colors">
+                           {['12', '11', '10', '9', '8', '7', '6'].map(g => <option key={g} value={g} className="bg-slate-900">Lớp {g}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">{activeTool === 'quiz_creator' ? 'Độ khó' : 'Năm thi'}</label>
+                        {activeTool === 'quiz_creator' ? (
+                          <select value={filters.difficulty} onChange={e => setFilters({...filters, difficulty: e.target.value})} className="w-full p-4 bg-slate-900/50 text-white rounded-2xl font-medium outline-none border border-white/10 focus:border-indigo-500/50 transition-colors">
+                             {['Dễ', 'Trung bình', 'Khó', 'Cực khó'].map(d => <option key={d} value={d} className="bg-slate-900">{d}</option>)}
+                          </select>
+                        ) : (
+                          <select value={filters.year} onChange={e => setFilters({...filters, year: e.target.value})} className="w-full p-4 bg-slate-900/50 text-white rounded-2xl font-medium outline-none border border-white/10 focus:border-indigo-500/50 transition-colors">
+                             {['2024', '2023', '2022', '2021'].map(y => <option key={y} value={y} className="bg-slate-900">{y}</option>)}
+                          </select>
+                        )}
+                      </div>
                    </div>
                 </div>
               ) : (
@@ -472,27 +516,72 @@ const StudyTools: React.FC<{ onExp: (amount: number) => void }> = ({ onExp }) =>
                               <h4 className="text-lg font-black text-white leading-tight pt-1">{q.question}</h4>
                            </div>
                            <div className="grid grid-cols-1 gap-3 mb-6">
-                              {q.options.map((opt: string, optIdx: number) => (
-                                <div 
-                                  key={optIdx} 
-                                  className={`p-4 rounded-2xl border font-bold text-sm transition-all ${
-                                    optIdx === q.correctAnswerIndex 
-                                      ? 'bg-green-500/10 border-green-500/30 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.1)]' 
-                                      : 'bg-slate-900/50 border-white/5 text-slate-400'
-                                  }`}
-                                >
-                                   <span className="opacity-50 mr-3">{String.fromCharCode(65 + optIdx)}.</span> {opt}
+                              {q.options.map((opt: string, optIdx: number) => {
+                                const isSelected = userAnswers[i] === optIdx;
+                                const isCorrect = optIdx === q.correctAnswerIndex;
+                                const showResult = isQuizSubmitted;
+                                
+                                return (
+                                  <button 
+                                    key={optIdx} 
+                                    disabled={isQuizSubmitted}
+                                    onClick={() => setUserAnswers(prev => ({...prev, [i]: optIdx}))}
+                                    className={`p-4 rounded-2xl border font-bold text-sm transition-all text-left flex items-center gap-3 ${
+                                      showResult
+                                        ? isCorrect
+                                          ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                                          : isSelected
+                                            ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                                            : 'bg-slate-900/50 border-white/5 text-slate-500'
+                                        : isSelected
+                                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                                          : 'bg-slate-900/50 border-white/5 text-slate-400 hover:border-white/20'
+                                    }`}
+                                  >
+                                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${isSelected ? 'bg-white text-indigo-600' : 'bg-white/10 text-slate-400'}`}>
+                                        {String.fromCharCode(65 + optIdx)}
+                                     </span>
+                                     {opt}
+                                     {showResult && isCorrect && <CheckCircle2 size={16} className="ml-auto" />}
+                                     {showResult && isSelected && !isCorrect && <AlertCircle size={16} className="ml-auto" />}
+                                  </button>
+                                );
+                              })}
+                           </div>
+                           {isQuizSubmitted && (
+                             <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-2xl p-5 animate-in slide-in-from-top-2">
+                                <div className="flex items-center gap-2 text-indigo-400 font-black text-[10px] uppercase tracking-widest mb-2">
+                                   <Sparkles size={14} /> Giải thích chuyên sâu
                                 </div>
-                              ))}
-                           </div>
-                           <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-2xl p-5">
-                              <div className="flex items-center gap-2 text-indigo-400 font-black text-[10px] uppercase tracking-widest mb-2">
-                                 <Sparkles size={14} /> Giải thích chuyên sâu
-                              </div>
-                              <p className="text-slate-300 text-sm leading-relaxed font-medium">{q.explanation}</p>
-                           </div>
+                                <p className="text-slate-300 text-sm leading-relaxed font-medium">{q.explanation}</p>
+                             </div>
+                           )}
                         </div>
                       ))}
+                      
+                      {!isQuizSubmitted && (
+                        <button 
+                          onClick={() => setIsQuizSubmitted(true)}
+                          className="w-full py-4 bg-green-600 text-white rounded-2xl font-black text-lg shadow-lg hover:bg-green-500 transition-all"
+                        >
+                          NỘP BÀI & XEM ĐÁP ÁN
+                        </button>
+                      )}
+                      
+                      {isQuizSubmitted && (
+                        <div className="glass-card rounded-[2.5rem] border border-white/10 p-8 text-center">
+                           <h3 className="text-xl font-black text-white mb-2">Kết quả của bạn</h3>
+                           <div className="text-4xl font-black text-indigo-400 mb-4">
+                              {Object.entries(userAnswers).filter(([idx, ans]) => result[parseInt(idx)].correctAnswerIndex === ans).length} / {result.length}
+                           </div>
+                           <button 
+                             onClick={handleRunTool}
+                             className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest"
+                           >
+                             LÀM ĐỀ KHÁC
+                           </button>
+                        </div>
+                      )}
                    </div>
                  ) : activeTool === 'essay_grader' ? (
                    <div className="glass-card rounded-[3rem] border border-white/10 p-10 shadow-xl space-y-8">

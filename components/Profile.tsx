@@ -1,13 +1,18 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { UserProfile } from '../types';
 import { getLevelInfo } from '../constants';
 import { 
   Flame, BookOpen, BrainCircuit, Target, Settings, Share2, Award, 
   Sparkles, Ghost, Zap, X, ShieldCheck, Crown, ShieldAlert, Key,
   Lock, CheckCircle2, AlertCircle, TrendingUp, Briefcase, ChevronRight,
-  ListChecks, RefreshCw, Stars, Globe, BarChart3, Ruler, Plus
+  ListChecks, RefreshCw, Stars, Globe, BarChart3, Ruler, Plus,
+  Info
 } from 'lucide-react';
+import { 
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, 
+  ResponsiveContainer, PolarRadiusAxis 
+} from 'recharts';
 import { roastOrToast } from '../services/geminiService';
 
 interface ProfileProps {
@@ -60,6 +65,30 @@ const Profile: React.FC<ProfileProps> = ({ userData, onUpdate, onToast }) => {
   };
 
   const skills = userData.skills || { criticalThinking: 60, focus: 80, creativity: 50, knowledge: 70, discipline: 90 };
+
+  const chartData = useMemo(() => [
+    { subject: 'Tư duy', A: skills.criticalThinking, fullMark: 100 },
+    { subject: 'Tập trung', A: skills.focus, fullMark: 100 },
+    { subject: 'Sáng tạo', A: skills.creativity, fullMark: 100 },
+    { subject: 'Kiến thức', A: skills.knowledge, fullMark: 100 },
+    { subject: 'Kỷ luật', A: skills.discipline, fullMark: 100 },
+  ], [skills]);
+
+  const aiInsight = useMemo(() => {
+    const skillsArray = Object.entries(skills) as [keyof typeof skills, number][];
+    const sortedSkills = skillsArray.sort((a, b) => b[1] - a[1]);
+    const topSkill = sortedSkills[0][0];
+    
+    const insights: Record<string, string> = {
+      criticalThinking: "Tư duy phản biện của bạn rất sắc bén. Hãy tận dụng nó để giải quyết các bài toán hóc búa!",
+      focus: "Khả năng tập trung của bạn thật đáng nể. Đây là chìa khóa để chinh phục mọi mục tiêu.",
+      creativity: "Sức sáng tạo của bạn là vô hạn. Đừng ngần ngại thử những phương pháp học tập mới lạ.",
+      knowledge: "Kho tàng kiến thức của bạn đang lớn dần. Hãy tiếp tục bồi đắp nó mỗi ngày.",
+      discipline: "Kỷ luật thép là sức mạnh lớn nhất của bạn. Nó sẽ đưa bạn đi xa hơn bất kỳ ai."
+    };
+
+    return insights[String(topSkill)] || "Bạn đang tiến bộ rất đều. Hãy tiếp tục duy trì phong độ này!";
+  }, [skills]);
 
   return (
     <div className="animate-slide-up pb-32 max-w-2xl mx-auto w-full px-4">
@@ -154,33 +183,61 @@ const Profile: React.FC<ProfileProps> = ({ userData, onUpdate, onToast }) => {
 
       {/* AI Skill Chart */}
       <div className="glass-card p-10 rounded-[4rem] border border-white/10 shadow-2xl mb-12 bg-slate-900/50 relative overflow-hidden group">
-         <div className="flex items-center gap-4 mb-10">
-            <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg"><BarChart3 size={24}/></div>
-            <div>
-               <h3 className="text-2xl font-black text-white tracking-tight">AI Skill Radar</h3>
-               <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Phân tích năng lực thực tế</p>
+         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
+         
+         <div className="flex items-center justify-between mb-10 relative z-10">
+            <div className="flex items-center gap-4">
+               <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20"><BarChart3 size={24}/></div>
+               <div>
+                  <h3 className="text-2xl font-black text-white tracking-tight">AI Skill Radar</h3>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Phân tích năng lực thực tế</p>
+               </div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-500 hover:text-white transition-colors cursor-help">
+               <Info size={18} />
             </div>
          </div>
          
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-            <div className="space-y-4">
-               {Object.entries(skills).map(([key, val]) => (
-                 <div key={key}>
-                    <div className="flex justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                       <span>{key.replace(/([A-Z])/g, ' $1')}</span>
-                       <span className="text-indigo-400">{val}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden shadow-inner">
-                       <div className="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)] transition-all duration-1000" style={{ width: `${val}%` }}></div>
-                    </div>
-                 </div>
-               ))}
+         <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 items-center relative z-10">
+            <div className="lg:col-span-3 h-[320px] w-full animate-in fade-in zoom-in duration-700">
+               <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
+                    <PolarGrid stroke="#334155" />
+                    <PolarAngleAxis 
+                      dataKey="subject" 
+                      tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }}
+                    />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                    <Radar
+                      name="Skills"
+                      dataKey="A"
+                      stroke="#6366f1"
+                      fill="#6366f1"
+                      fillOpacity={0.5}
+                      animationBegin={300}
+                      animationDuration={1500}
+                    />
+                  </RadarChart>
+               </ResponsiveContainer>
             </div>
-            <div className="bg-slate-800/50 rounded-[3rem] p-8 text-center flex flex-col items-center justify-center border border-white/5">
-               <Sparkles size={48} className="text-amber-400 mb-4 animate-pulse" />
-               <p className="text-sm font-bold text-slate-400 italic leading-relaxed">
-                  "Học giả này có kỷ luật thép. Hãy tiếp tục mài giũa tư duy sáng tạo để trở nên toàn diện hơn!"
-               </p>
+
+            <div className="lg:col-span-2 space-y-6">
+               <div className="bg-indigo-500/5 rounded-[3rem] p-8 text-center flex flex-col items-center justify-center border border-indigo-500/10 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50"></div>
+                  <Sparkles size={40} className="text-amber-400 mb-4 animate-pulse drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
+                  <p className="text-sm font-bold text-slate-300 italic leading-relaxed">
+                     "{aiInsight}"
+                  </p>
+               </div>
+
+               <div className="grid grid-cols-2 gap-3">
+                  {Object.entries(skills).map(([key, val]) => (
+                    <div key={key} className="bg-slate-800/40 p-3 rounded-2xl border border-white/5 flex flex-col items-center justify-center">
+                       <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter mb-1">{key.replace(/([A-Z])/g, ' $1')}</span>
+                       <span className="text-sm font-black text-indigo-400">{val}%</span>
+                    </div>
+                  ))}
+               </div>
             </div>
          </div>
       </div>

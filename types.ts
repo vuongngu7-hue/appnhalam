@@ -95,6 +95,7 @@ export interface Post {
   aiAnalysis?: string;
   hashtags?: string[];
   isPinned?: boolean;
+  image?: string;
 }
 
 export interface Message {
