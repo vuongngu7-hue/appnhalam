@@ -71,7 +71,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ currentUid, userData }) => {
       {/* Pantheon Header */}
       <div className="text-center space-y-4">
          <div className="inline-flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-full text-[10px] font-black uppercase tracking-[0.4em] shadow-[0_0_15px_rgba(99,102,241,0.5)] border border-white/20">
-            <Globe size={12} className="animate-spin-slow" /> StudyGram V7
+            <Globe size={12} className="animate-spin-slow" /> EduNova AI
          </div>
          <h2 className="text-4xl font-black text-white tracking-tighter leading-none neon-text">BẢNG PHONG THẦN</h2>
       </div>

@@ -76,6 +76,18 @@ export interface UserProfile {
   currentMission?: StudyMission;
   weakPoints: { topic: string; score: number }[];
   inventory: { id: string; type: 'powerup' | 'shield' | 'cosmetic'; count: number }[];
+  dailyExpGained?: number;
+  bossChallengePassed?: boolean;
+  activityLog?: ActivityItem[];
+}
+
+export interface ActivityItem {
+  id: string;
+  type: 'quiz' | 'focus' | 'tutor' | 'feed' | 'mission' | 'other';
+  title: string;
+  description: string;
+  timestamp: number;
+  xpGained: number;
 }
 
 export type PostType = 'knowledge' | 'story' | 'meme' | 'event';

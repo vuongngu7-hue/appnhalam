@@ -9,8 +9,8 @@ import {
 const PET_STAGES = [
   { icon: '🥚', label: 'Incubating', color: 'text-slate-400', glow: 'shadow-slate-200' },
   { icon: '🐣', label: 'Novice', color: 'text-yellow-400', glow: 'shadow-yellow-200' },
-  { icon: '🦅', label: 'Scholar', color: 'text-indigo-500', glow: 'shadow-indigo-300' },
-  { icon: '🐉', label: 'Dragon', color: 'text-purple-500', glow: 'shadow-purple-400' }
+  { icon: '🦅', label: 'Scholar', color: 'text-teal-400', glow: 'shadow-teal-400' },
+  { icon: '🐉', label: 'Dragon', color: 'text-emerald-400', glow: 'shadow-emerald-400' }
 ];
 
 const AMBIENT_SOUNDS = [
@@ -101,8 +101,8 @@ const FocusZone: React.FC<{ onExp: (amount: number) => void; showToast: (m: stri
 
       {!isDeepFocus && (
         <div className="w-full flex justify-between items-center mb-8 px-4">
-          <div className="flex items-center gap-3 bg-slate-800/50 px-4 py-2 rounded-2xl border border-white/5">
-            <BarChart size={16} className="text-indigo-400" />
+          <div className="flex items-center gap-3 bg-slate-900/40 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/5">
+            <BarChart size={16} className="text-teal-400" />
             <div className="flex flex-col">
               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Total Focused</span>
               <span className="text-xs font-black text-white">{formatDuration(totalFocusTime)}</span>
@@ -110,7 +110,7 @@ const FocusZone: React.FC<{ onExp: (amount: number) => void; showToast: (m: stri
           </div>
           <button 
             onClick={() => setIsDeepFocus(true)}
-            className="flex items-center gap-2 bg-indigo-500/10 text-indigo-400 px-4 py-2 rounded-2xl border border-indigo-500/20 hover:bg-indigo-500/20 transition-all font-black text-[10px] uppercase tracking-widest"
+            className="flex items-center gap-2 bg-teal-500/10 text-teal-400 px-4 py-2 rounded-2xl border border-teal-500/20 hover:bg-teal-500/20 transition-all font-black text-[10px] uppercase tracking-widest shadow-[0_0_15px_rgba(20,184,166,0.1)]"
           >
             <Zap size={14} fill="currentColor" /> Deep Focus
           </button>
@@ -129,75 +129,76 @@ const FocusZone: React.FC<{ onExp: (amount: number) => void; showToast: (m: stri
       {/* Main Timer Cylinder */}
       <div className={`relative w-full aspect-square max-h-[400px] flex items-center justify-center transition-all duration-700 ${isDeepFocus ? 'scale-125' : ''}`}>
          {/* Outer Glow Ring */}
-         <div className={`absolute inset-0 rounded-full border-[20px] border-slate-800/50 transition-all duration-1000 ${isActive ? 'scale-105 shadow-[0_0_60px_rgba(99,102,241,0.3)]' : 'scale-100'}`}></div>
+         <div className={`absolute inset-0 rounded-full border-[20px] border-slate-900/20 transition-all duration-1000 ${isActive ? 'scale-105 shadow-[0_0_70px_rgba(20,184,166,0.25)]' : 'scale-100'}`}></div>
          
          {/* Progress Ring SVG */}
-         <svg className="absolute inset-0 w-full h-full -rotate-90 p-4 drop-shadow-xl">
-            <circle cx="50%" cy="50%" r="42%" stroke="currentColor" strokeWidth="20" fill="transparent" className="text-slate-800" />
+         <svg className="absolute inset-0 w-full h-full -rotate-90 p-4 drop-shadow-2xl">
+            <circle cx="50%" cy="50%" r="42%" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-950/40" />
             <circle 
-              cx="50%" cy="50%" r="42%" stroke="currentColor" strokeWidth="20" fill="transparent" 
+              cx="50%" cy="50%" r="42%" stroke="currentColor" strokeWidth="12" fill="transparent" 
               strokeDasharray="264%" strokeDashoffset={`${264 - (progress / 100) * 264}%`} 
               strokeLinecap="round"
-              className={`transition-all duration-1000 ease-linear ${mode === 'study' ? 'text-indigo-500 drop-shadow-[0_0_10px_rgba(99,102,241,0.8)]' : 'text-green-500 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]'}`}
+              className={`transition-all duration-1000 ease-linear ${mode === 'study' ? 'text-teal-400 drop-shadow-[0_0_12px_rgba(20,184,166,0.8)]' : 'text-emerald-400 drop-shadow-[0_0_12px_rgba(52,211,153,0.8)]'}`}
             />
          </svg>
 
          {/* Center Content */}
-         <div className="absolute inset-8 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/10 flex flex-col items-center justify-center shadow-inner z-10">
-            {/* Visualizer */}
-            <div className="flex items-center gap-1 h-8 mb-4">
-              {bars.map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`w-1 bg-slate-700 rounded-full transition-all duration-300 ${isActive ? (mode === 'study' ? 'bg-indigo-400 animate-music-bar shadow-[0_0_5px_rgba(99,102,241,0.8)]' : 'bg-green-400 animate-music-bar shadow-[0_0_5px_rgba(74,222,128,0.8)]') : ''}`}
-                  style={{ animationDelay: `${i * 0.05}s` }}
-                ></div>
-              ))}
-            </div>
-
-            <div className="text-7xl font-black text-white tracking-tighter tabular-nums mb-2 neon-text">
+         <div className="absolute inset-10 rounded-full bg-slate-950/70 backdrop-blur-md border border-white/5 flex flex-col items-center justify-center shadow-inner z-10">
+            <div className="text-8xl font-black text-white tracking-tighter tabular-nums mb-3 drop-shadow-[0_0_20px_rgba(255,255,255,0.25)]">
                {formatTime(seconds)}
             </div>
             
-            <div className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.3em] border ${mode === 'study' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : 'bg-green-500/20 text-green-300 border-green-500/30'}`}>
-               {mode === 'study' ? 'Focus Mode' : 'Chill Mode'}
+            <div className={`px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-[0.25em] border ${mode === 'study' ? 'bg-teal-500/10 text-teal-400 border-teal-500/30 shadow-[0_0_15px_rgba(20,184,166,0.15)]' : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'}`}>
+               {mode === 'study' ? 'FOCUS MODE' : 'CHILL MODE'}
             </div>
 
-            <div className="mt-6 text-4xl animate-bounce drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
-               {PET_STAGES[petStage].icon}
+            {/* Premium Pixel Speckled Egg Shape */}
+            <div className="mt-5 text-white drop-shadow-[0_0_25px_rgba(255,255,255,0.9)] hover:scale-110 active:scale-95 transition-all cursor-pointer">
+              <svg viewBox="0 0 100 130" className="w-10 h-12" fill="currentColor">
+                <path d="M50 0 C22.4 0 0 58.2 0 88 C0 111.2 22.4 130 50 130 C77.6 130 100 111.2 100 88 C100 58.2 77.6 0 50 0 Z" fill="#ffffff" />
+                {/* Discrete egg speckles for detail */}
+                <circle cx="45" cy="75" r="3" fill="#e2e8f0" />
+                <circle cx="58" cy="85" r="2.5" fill="#cbd5e1" />
+                <circle cx="38" cy="95" r="3.5" fill="#cbd5e1" />
+                <circle cx="62" cy="65" r="2" fill="#e2e8f0" />
+              </svg>
             </div>
          </div>
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-6 mt-12 z-20">
-         <button onClick={() => { setIsActive(false); setSeconds(mode === 'study' ? 25*60 : 5*60); }} className="w-16 h-16 rounded-[2rem] bg-slate-800/50 border border-white/10 text-slate-400 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors shadow-inner">
-            <RotateCcw size={24} />
+      <div className="flex items-center gap-8 mt-12 z-20">
+         <button onClick={() => { setIsActive(false); setSeconds(mode === 'study' ? 25*60 : 5*60); }} className="w-14 h-14 rounded-full bg-slate-950/50 border border-teal-500/20 text-slate-400 flex items-center justify-center hover:bg-slate-800 hover:text-white transition-all shadow-lg hover:border-teal-500/40">
+            <RotateCcw size={20} />
          </button>
 
          <button 
            onClick={() => setIsActive(!isActive)} 
-           className={`w-24 h-24 rounded-[2.5rem] flex items-center justify-center text-white shadow-2xl transition-all hover:scale-105 active:scale-95 ${isActive ? 'bg-slate-800 border border-white/20' : (mode === 'study' ? 'bg-indigo-600 shadow-[0_0_30px_rgba(99,102,241,0.5)]' : 'bg-green-500 shadow-[0_0_30px_rgba(74,222,128,0.5)]')}`}
+           className={`w-20 h-20 rounded-full flex items-center justify-center text-slate-950 shadow-2xl transition-all hover:scale-105 active:scale-95 ${isActive ? 'bg-slate-800 border border-teal-500/30 text-teal-400 shadow-[0_0_25px_rgba(20,184,166,0.2)]' : 'bg-teal-500 shadow-[0_0_35px_rgba(20,184,166,0.6)] hover:bg-teal-400 text-slate-950'}`}
          >
-            {isActive ? <Pause size={36} fill="currentColor" /> : <Play size={36} fill="currentColor" className="ml-1" />}
+            {isActive ? <Pause size={30} fill="currentColor" /> : <Play size={30} fill="currentColor" className="ml-1" />}
          </button>
 
-         <button onClick={() => setShowMusic(!showMusic)} className={`w-16 h-16 rounded-[2rem] flex items-center justify-center transition-colors border shadow-inner ${showMusic ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-slate-800/50 text-slate-400 border-white/10 hover:bg-white/10 hover:text-white'}`}>
-            <Headphones size={24} />
+         <button onClick={() => setShowMusic(!showMusic)} className={`w-14 h-14 rounded-full flex items-center justify-center transition-all border shadow-lg ${showMusic ? 'bg-teal-500/20 text-teal-400 border-teal-500/40' : 'bg-slate-950/50 text-slate-400 border-teal-500/20 hover:bg-slate-800 hover:text-white'}`}>
+            <Headphones size={20} />
          </button>
       </div>
 
       {/* Ambient Menu */}
       {showMusic && (
-         <div className="absolute bottom-32 glass-card p-6 rounded-[3rem] shadow-2xl w-full border border-white/10 animate-slide-up grid grid-cols-4 gap-4">
+         <div className="absolute bottom-36 left-4 right-4 glass-card p-5 rounded-[2.5rem] shadow-[0_15px_50px_rgba(0,0,0,0.8)] border border-white/10 animate-slide-up grid grid-cols-3 gap-3 z-40 shadow-[0_0_30px_rgba(20,184,166,0.15)]">
             {AMBIENT_SOUNDS.map(s => (
                <button 
                  key={s.id} 
                  onClick={() => toggleAmbient(s)}
-                 className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all ${activeAmbient === s.id ? 'bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'hover:bg-white/10 text-slate-400 hover:text-white'}`}
+                 className={`flex flex-col items-center gap-2 p-3.5 rounded-2xl transition-all ${
+                   activeAmbient === s.id 
+                     ? 'bg-teal-500 text-slate-950 font-black shadow-[0_0_15px_rgba(20,184,166,0.6)]' 
+                     : 'bg-slate-900/45 hover:bg-slate-800 text-slate-400 hover:text-white border border-white/5'
+                 }`}
                >
-                  <s.icon size={20} />
-                  <span className="text-[9px] font-bold uppercase">{s.id}</span>
+                  <s.icon size={18} className={activeAmbient === s.id ? "text-slate-950" : "text-teal-400/80"} />
+                  <span className="text-[9px] font-bold uppercase tracking-wider">{s.name}</span>
                </button>
             ))}
          </div>

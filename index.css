@@ -4,23 +4,49 @@
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   
-  --color-primary: #6366f1; /* indigo-500 */
+  --color-primary: #14b8a6; /* teal-500 */
   --color-accent: #fbbf24; /* amber-400 */
-  --color-bg-main: #0f172a; /* slate-900 */
-  --color-bg-secondary: #1e293b; /* slate-800 */
+  --color-bg-main: #040811; /* custom deep black space */
+  --color-bg-secondary: #0a1120; /* custom slate deep space */
+
+  /* Overriding indigo defaults to high-tech teal / emerald */
+  --color-indigo-50: #ecfdf5;
+  --color-indigo-100: #d1fae5;
+  --color-indigo-200: #a7f3d0;
+  --color-indigo-300: #5eead4;
+  --color-indigo-400: #2dd4bf;
+  --color-indigo-500: #14b8a6;
+  --color-indigo-600: #0d9488;
+  --color-indigo-700: #0f766e;
+  --color-indigo-800: #115e59;
+  --color-indigo-900: #134e4a;
+  --color-indigo-950: #042f2e;
+
+  /* Overriding purple defaults to cosmic cyber sky cyan / blue */
+  --color-purple-50: #f0f9ff;
+  --color-purple-100: #e0f2fe;
+  --color-purple-200: #bae6fd;
+  --color-purple-300: #7dd3fc;
+  --color-purple-400: #38bdf8;
+  --color-purple-500: #0ea5e9;
+  --color-purple-600: #0284c7;
+  --color-purple-700: #0369a1;
+  --color-purple-800: #075985;
+  --color-purple-900: #0c4a6e;
+  --color-purple-950: #082f49;
 }
 
 @layer base {
   body {
     @apply bg-bg-main text-slate-200 antialiased font-sans overflow-x-hidden;
-    background: radial-gradient(circle at top left, #1e1b4b, #0f172a 40%, #020617 100%);
+    background: radial-gradient(circle at top left, #115e59, #042f2e 40%, #030712 100%);
     min-height: 100vh;
   }
 }
 
 @layer components {
   .glass {
-    background: rgba(30, 41, 59, 0.4);
+    background: rgba(10, 17, 32, 0.4);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -28,15 +54,15 @@
   }
 
   .glass-card {
-    @apply bg-slate-800/40 backdrop-blur-xl border border-white/10 shadow-2xl;
+    @apply bg-slate-900/40 backdrop-blur-xl border border-white/10 shadow-2xl;
   }
   
   .neo-card {
-    @apply bg-slate-800/50 border border-slate-700/50 shadow-lg hover:shadow-indigo-500/20 hover:-translate-y-1 transition-all duration-300;
+    @apply bg-slate-900/50 border border-slate-700/50 shadow-lg hover:shadow-teal-500/20 hover:-translate-y-1 transition-all duration-300;
   }
 
   .clean-card {
-    background: rgba(30, 41, 59, 0.6);
+    background: rgba(10, 17, 32, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.05);
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -44,12 +70,12 @@
   
   .clean-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.15), 0 8px 10px -6px rgba(99, 102, 241, 0.1);
-    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 10px 25px -5px rgba(20, 184, 166, 0.15), 0 8px 10px -6px rgba(20, 184, 166, 0.1);
+    border-color: rgba(20, 184, 166, 0.3);
   }
 
   .neon-glow {
-    box-shadow: 0 0 15px rgba(99, 102, 241, 0.5), inset 0 0 10px rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 15px rgba(20, 184, 166, 0.5), inset 0 0 10px rgba(20, 184, 166, 0.2);
   }
 
   .neon-text {

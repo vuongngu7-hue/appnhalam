@@ -1,8 +1,11 @@
 {
-  "name": "du an ",
+  "name": "EduNova AI",
   "description": "Hệ điều hành học tập kịch tính với hệ thống sinh tồn Streak, Tim (Lives), Boss Challenge và AI Redemption.",
   "requestFramePermissions": [
     "camera",
     "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }

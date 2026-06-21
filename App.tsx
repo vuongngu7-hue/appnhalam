@@ -13,7 +13,7 @@ import {
   Star, CheckCircle, BarChart3, ListTodo, Rocket, Shield,
   RefreshCw, AlertTriangle
 } from 'lucide-react';
-import { UserProfile, AppTab, LoginMethod, DailyQuest } from './types';
+import { UserProfile, AppTab, LoginMethod, DailyQuest, ActivityItem } from './types';
 import { getLevelInfo } from './constants';
 import Feed from './components/Feed';
 import AITutor from './components/AITutor';
@@ -70,6 +70,8 @@ const App: React.FC = () => {
           // New Day Logic
           parsedData.dailyQuests = INITIAL_QUESTS; // Reset quests
           parsedData.lastLogin = Date.now();
+          parsedData.dailyExpGained = 0;
+          parsedData.bossChallengePassed = false;
 
           if (dayDiff > 1) {
              // Missed a day
@@ -99,6 +101,45 @@ const App: React.FC = () => {
           ];
         }
         if (!parsedData.weakPoints) parsedData.weakPoints = [];
+        if (!parsedData.activityLog || parsedData.activityLog.length === 0) {
+          parsedData.activityLog = [
+            {
+              id: 'init-1',
+              type: 'quiz',
+              title: 'Chiến thắng Arena Tranh Biện',
+              description: 'Hoàn thành phản biện chủ đề "Trí tuệ nhân tạo sẽ thay thế giáo viên trong tương lai"',
+              timestamp: Date.now() - 3 * 3600 * 1000,
+              xpGained: 55
+            },
+            {
+              id: 'init-2',
+              type: 'focus',
+              title: 'Phòng tập trung vô cực Pomodoro',
+              description: 'Tập trung học tập năng suất cao trong 25 phút',
+              timestamp: Date.now() - 6 * 3600 * 1000,
+              xpGained: 40
+            },
+            {
+              id: 'init-3',
+              type: 'tutor',
+              title: 'Tương tác AI Tutor giải bài tập',
+              description: 'Xác minh đáp án và giải thích chi tiết phương trình hóa hữu cơ',
+              timestamp: Date.now() - 10 * 3600 * 1000,
+              xpGained: 35
+            }
+          ];
+        }
+        if (parsedData.dailyExpGained === undefined) parsedData.dailyExpGained = 0;
+        if (parsedData.bossChallengePassed === undefined) parsedData.bossChallengePassed = false;
+        if (!parsedData.skills) {
+          parsedData.skills = { criticalThinking: 20, focus: 20, creativity: 20, knowledge: 20, discipline: 20 };
+        } else {
+          if (parsedData.skills.criticalThinking === undefined) parsedData.skills.criticalThinking = 20;
+          if (parsedData.skills.focus === undefined) parsedData.skills.focus = 20;
+          if (parsedData.skills.creativity === undefined) parsedData.skills.creativity = 20;
+          if (parsedData.skills.knowledge === undefined) parsedData.skills.knowledge = 20;
+          if (parsedData.skills.discipline === undefined) parsedData.skills.discipline = 20;
+        }
         
         setUserData(parsedData);
       } catch (e) {
@@ -112,13 +153,87 @@ const App: React.FC = () => {
     setUserData(updated);
   }, []);
 
-  const handleAddExp = useCallback((amount: number) => {
+  const handleAddExp = useCallback((
+    amount: number, 
+    activityType?: ActivityItem['type'], 
+    activityTitle?: string, 
+    activityDesc?: string
+  ) => {
     setUserData(prev => {
         if (!prev) return null;
-        return { ...prev, exp: prev.exp + amount };
+        const updatedSkills = { ...(prev.skills || { criticalThinking: 20, focus: 20, creativity: 20, knowledge: 20, discipline: 20 }) };
+        
+        // Dynamic skill training logic based on activeTab
+        const pointsToAdd = Math.max(1, Math.round(amount * 0.15));
+
+        const tab = activeTab;
+        if (tab === AppTab.FOCUS || activityType === 'focus') {
+          updatedSkills.focus = Math.min(100, (updatedSkills.focus || 20) + pointsToAdd);
+        } else if (tab === AppTab.QUIZ || activityType === 'quiz') {
+          updatedSkills.criticalThinking = Math.min(100, (updatedSkills.criticalThinking || 20) + pointsToAdd);
+        } else if (tab === AppTab.TUTOR || activityType === 'tutor') {
+          updatedSkills.knowledge = Math.min(100, (updatedSkills.knowledge || 20) + pointsToAdd);
+        } else if (tab === AppTab.FEED || activityType === 'feed') {
+          updatedSkills.creativity = Math.min(100, (updatedSkills.creativity || 20) + pointsToAdd);
+        } else {
+          updatedSkills.discipline = Math.min(100, (updatedSkills.discipline || 20) + pointsToAdd);
+        }
+
+        // Generate activity item
+        let finalType: ActivityItem['type'] = activityType || 'other';
+        let finalTitle = activityTitle || '';
+        let finalDesc = activityDesc || '';
+
+        if (!activityType) {
+          if (tab === AppTab.FOCUS) {
+            finalType = 'focus';
+            finalTitle = 'Tập trung Pomodoro';
+            finalDesc = 'Hoàn thành phiên làm việc sâu để rèn luyện sự tập trung.';
+          } else if (tab === AppTab.QUIZ) {
+            finalType = 'quiz';
+            finalTitle = 'Arena Tranh Biện';
+            finalDesc = 'Hoàn thành lượt phản biện sắc bén với đấu sĩ AI.';
+          } else if (tab === AppTab.TUTOR) {
+            finalType = 'tutor';
+            finalTitle = 'Tương tác AI Tutor';
+            finalDesc = 'Đặt câu hỏi và nhận phân tích học thuật từ AI Tutor.';
+          } else if (tab === AppTab.FEED) {
+            finalType = 'feed';
+            finalTitle = 'Cập nhật Feed Tri Thức';
+            finalDesc = 'Tham gia đóng góp ý kiến và thảo luận trên bảng tin.';
+          } else if (tab === AppTab.MISSION) {
+            finalType = 'mission';
+            finalTitle = 'Nhiệm vụ lộ trình Sở GD';
+            finalDesc = 'Hoàn thành một chương học tập trọng tâm trong kế hoạch ôn thi.';
+          } else {
+            finalType = 'other';
+            finalTitle = 'Hoạt động học tập';
+            finalDesc = 'Tích lũy điểm xu và kinh nghiệm học đường trên EduNova AI.';
+          }
+        }
+
+        const newActivity: ActivityItem = {
+          id: 'act-' + Math.random().toString(36).slice(2, 7),
+          type: finalType,
+          title: finalTitle,
+          description: finalDesc,
+          timestamp: Date.now(),
+          xpGained: amount
+        };
+
+        const currentLog = prev.activityLog || [];
+        const updatedLog = [newActivity, ...currentLog].slice(0, 50); // Keep latest 50
+
+        return { 
+          ...prev, 
+          exp: prev.exp + amount,
+          dailyExpGained: (prev.dailyExpGained || 0) + amount,
+          skills: updatedSkills,
+          activityLog: updatedLog
+        };
     });
     showToast(`+${amount} EXP!`, 'success');
-  }, [showToast]);
+  }, [showToast, activeTab]);
 
   const updateQuestProgress = useCallback((questId: string, amount: number) => {
     setUserData(prev => {
@@ -136,14 +251,28 @@ const App: React.FC = () => {
     if (!userData) return;
     const quest = userData.dailyQuests.find(q => q.id === questId);
     if (quest && quest.current >= quest.target && !quest.isClaimed) {
-      handleAddExp(quest.reward);
       setUserData(prev => {
         if (!prev) return null;
+        
+        const updatedSkills = { ...(prev.skills || { criticalThinking: 20, focus: 20, creativity: 20, knowledge: 20, discipline: 20 }) };
+        if (questId === 'q1') {
+          updatedSkills.focus = Math.min(100, (updatedSkills.focus || 20) + 15);
+        } else if (questId === 'q2') {
+          updatedSkills.knowledge = Math.min(100, (updatedSkills.knowledge || 20) + 15);
+        } else if (questId === 'q3') {
+          updatedSkills.discipline = Math.min(100, (updatedSkills.discipline || 20) + 15);
+          updatedSkills.creativity = Math.min(100, (updatedSkills.creativity || 20) + 10);
+        }
+
         return {
           ...prev,
+          exp: prev.exp + quest.reward,
+          dailyExpGained: (prev.dailyExpGained || 0) + quest.reward,
+          skills: updatedSkills,
           dailyQuests: prev.dailyQuests.map(q => q.id === questId ? { ...q, isClaimed: true } : q)
         };
       });
+      showToast(`+${quest.reward} EXP & Nâng cấp Kỹ năng! 🎉`, 'success');
       try {
         // @ts-ignore
         if (window.confetti) window.confetti({ particleCount: 70, spread: 80, origin: { y: 0.8 } });
@@ -163,6 +292,24 @@ const App: React.FC = () => {
       inventory: [
         { id: 'p1', type: 'powerup', count: 2 }, // Hint
         { id: 'p2', type: 'powerup', count: 1 }  // Fact Check
+      ],
+      activityLog: [
+        {
+          id: 'init-1',
+          type: 'quiz',
+          title: 'Chiến thắng Arena Tranh Biện',
+          description: 'Hoàn thành phản biện chủ đề "Trí tuệ nhân tạo sẽ thay thế giáo viên trong tương lai"',
+          timestamp: Date.now() - 3 * 3600 * 1000,
+          xpGained: 55
+        },
+        {
+          id: 'init-2',
+          type: 'focus',
+          title: 'Phòng tập trung vô cực Pomodoro',
+          description: 'Tập trung học tập năng suất cao trong 25 phút',
+          timestamp: Date.now() - 6 * 3600 * 1000,
+          xpGained: 40
+        }
       ]
     };
     setUserData(newUser);
@@ -227,7 +374,7 @@ const App: React.FC = () => {
           >
             {activeTab === AppTab.FEED && (
               <>
-                <ZenDashboard userData={userData} onClaim={claimQuestReward} />
+                <ZenDashboard userData={userData} onClaim={claimQuestReward} onUpdate={handleUpdateUser} />
                 <Feed userData={userData} onExp={(n) => { handleAddExp(n); updateQuestProgress('q3', 1); }} />
               </>
             )}
@@ -323,12 +470,57 @@ const RedemptionModal: React.FC<{ userData: UserProfile, onSuccess: () => void, 
   );
 }
 
-const ZenDashboard: React.FC<{ userData: UserProfile; onClaim: (id: string) => void }> = ({ userData, onClaim }) => {
+const ZenDashboard: React.FC<{ userData: UserProfile; onClaim: (id: string) => void; onUpdate: (updated: UserProfile) => void }> = ({ userData, onClaim, onUpdate }) => {
   const isPhantom = userData.streak >= 7;
   const streakProgress = (userData.streak % 7) / 7 * 100;
   const levelInfo = getLevelInfo(userData.exp);
   const nextLevelExp = (Math.floor(userData.exp / 100) + 1) * 100;
   const expProgress = (userData.exp % 100) / 100 * 100;
+
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const midnight = new Date();
+      midnight.setHours(24, 0, 0, 0); // Next midnight
+      const diff = midnight.getTime() - now.getTime();
+      
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      const hStr = String(hours).padStart(2, '0');
+      const mStr = String(minutes).padStart(2, '0');
+      const sStr = String(seconds).padStart(2, '0');
+      
+      setTimeLeft(`${hStr}:${mStr}:${sStr}`);
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const dailyBoss = useMemo(() => {
+    const days = [
+      { name: 'Chúa Tể Giải Tích 📐', desc: 'Sử dụng đạo hàm và tích phân tối thượng để bẻ gãy mọi nỗ lực học tập!', type: 'Math', hp: 100, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=MathBoss' },
+      { name: 'Quái Thú Động Lực Học ⚡', desc: 'Vận dụng ma sát và phản lực từ trường để làm chậm tốc độ tiếp thu của đối thủ!', type: 'Physics', hp: 100, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=PhysicsBoss' },
+      { name: 'Ma Vương Cacbohidrat 🧪', desc: 'Liên kết cấu trúc đường phức tạp để giam cầm tư duy logic!', type: 'Chemistry', hp: 100, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=ChemBoss' },
+      { name: 'Đại Đao Anh Ngữ 🇬🇧', desc: 'Phục kích bằng hàng loạt cụm từ Idioms bẫy ngữ pháp bế tắc!', type: 'English', hp: 100, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=EnglishBoss' },
+      { name: 'Mãng Xà Lịch Sử 📜', desc: 'Quấn chặt người học bằng các niên đại lịch sử và cột mốc dày đặc!', type: 'History', hp: 100, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=HistoryBoss' },
+      { name: 'Chúa Tể Địa Lý 🌍', desc: 'Tạo bão cát địa lý và kiến tạo mảng sụt lún để thử thách ý chí học giả!', type: 'Geography', hp: 100, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=GeoBoss' },
+      { name: 'Kẻ Hủy Diệt Tri Thức 🌌', desc: 'Quái vật hư vô nuốt chửng mọi sự tập trung và động lực mỗi cuối tuần!', type: 'General', hp: 100, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=KnowledgeBoss' }
+    ];
+    return days[new Date().getDay()];
+  }, []);
+
+  const currentDailyExp = userData.dailyExpGained || 0;
+  const bossHp = dailyBoss.hp;
+  const bossHpRemaining = Math.max(0, bossHp - currentDailyExp);
+  const hpPercent = Math.min(100, (currentDailyExp / bossHp) * 100);
+  const isDefeated = currentDailyExp >= bossHp;
+  const isClaimed = userData.bossChallengePassed || false;
 
   return (
     <motion.div 
@@ -422,6 +614,95 @@ const ZenDashboard: React.FC<{ userData: UserProfile; onClaim: (id: string) => v
             </div>
          </div>
       </div>
+
+      {/* Boss Raid Card */}
+      <div className={`glass-card p-8 md:p-10 rounded-[3rem] border border-white/10 shadow-2xl bg-slate-900/50 relative overflow-hidden group transition-all duration-700 ${isDefeated && !isClaimed ? 'ring-2 ring-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.2)]' : ''}`}>
+         <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 blur-[80px] rounded-full"></div>
+         <div className="relative z-10 flex flex-col md:flex-row gap-6 items-center">
+            <div className="shrink-0 relative group">
+              <div className="absolute -inset-1 rounded-[2.5rem] bg-indigo-600/30 blur-md group-hover:scale-105 transition-all"></div>
+              <img src={dailyBoss.avatar} className="relative w-24 h-24 rounded-[2rem] bg-slate-800 border-2 border-white/10 shadow-lg object-cover" />
+              {isDefeated && (
+                <div className="absolute -bottom-1 -right-1 bg-green-500 text-white p-1 rounded-lg border-2 border-slate-900 font-bold text-[8px] tracking-wide uppercase px-2 shadow-lg">K.O</div>
+              )}
+            </div>
+
+            <div className="flex-1 text-center md:text-left space-y-2 min-w-0">
+               <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                  <div>
+                     <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start">
+                        <span className="text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest bg-rose-500/20 text-rose-300 border border-rose-500/30">BOSS RAID HÀNG NGÀY</span>
+                        <span className="text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1 shadow-sm">
+                           <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse"></span>
+                           RESET TRONG: {timeLeft}
+                        </span>
+                     </div>
+                     <h3 className="text-xl md:text-2xl font-black text-white tracking-tight mt-2">{dailyBoss.name}</h3>
+                  </div>
+                  <div className="text-right">
+                     <span className="text-[10px] text-slate-500 uppercase tracking-widest font-black">BOSS HP</span>
+                     <p className="text-sm font-black text-white">{bossHpRemaining}/{bossHp} EXP</p>
+                  </div>
+               </div>
+
+               <p className="text-xs text-slate-400 font-medium leading-relaxed italic">{dailyBoss.desc}</p>
+               
+               {/* Boss HP Bar */}
+               <div className="space-y-1.5 pt-2">
+                  <div className="flex justify-between text-[9px] font-black uppercase tracking-wider text-slate-500">
+                     <span>Bản thân gây sát thương</span>
+                     <span className={isDefeated ? 'text-green-400 font-bold' : 'text-rose-400'}>{Math.floor(hpPercent)}% Sát thương</span>
+                  </div>
+                  <div className="h-3 bg-slate-800 rounded-full overflow-hidden border border-white/5 relative">
+                     <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${hpPercent}%` }}
+                        className={`h-full rounded-full transition-all duration-500 ${isDefeated ? 'bg-gradient-to-r from-emerald-500 to-green-400 shadow-[0_0_15px_rgba(34,197,94,0.6)]' : 'bg-gradient-to-r from-rose-600 to-amber-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]'}`}
+                     />
+                  </div>
+               </div>
+            </div>
+         </div>
+
+         {/* Actions block footer */}
+         <div className="mt-6 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10 w-full">
+            <div className="text-center sm:text-left">
+               <span className="text-[9px] text-slate-500 uppercase tracking-widest font-black block">Phần thưởng hạ boss</span>
+               <span className="text-xs font-bold text-slate-300 flex items-center justify-center sm:justify-start gap-1.5 mt-0.5">
+                  <Shield size={14} className="text-indigo-400" /> +1 Streak Shield (Bảo vệ chuỗi học tập)
+               </span>
+            </div>
+
+            <div className="w-full sm:w-auto">
+               {!isDefeated ? (
+                  <div className="text-[11px] font-black text-rose-400 bg-rose-500/10 px-4 py-2 border border-rose-500/20 rounded-xl text-center">
+                     CẦN THÊM {bossHpRemaining} EXP ĐỂ HẠ BOSS
+                  </div>
+               ) : !isClaimed ? (
+                  <button 
+                     onClick={() => {
+                        onUpdate({
+                           ...userData,
+                           streakShields: userData.streakShields + 1,
+                           bossChallengePassed: true
+                        });
+                        try {
+                           // @ts-ignore
+                           window.confetti({ particleCount: 150, spread: 80, origin: { y: 0.8 } });
+                        } catch (e) {}
+                     }}
+                     className="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.5)] hover:scale-105 active:scale-95 transition-all text-center cursor-pointer"
+                  >
+                     HẠ BOSS & NHẬN THƯỞNG 🛡️
+                  </button>
+               ) : (
+                  <div className="text-[11px] font-black text-emerald-400 bg-emerald-500/10 px-4 py-2 border border-emerald-500/20 rounded-xl text-center">
+                     BẢO VỆ CHUỖI ĐÃ ĐƯỢC BẬT CHU ĐÁO ✓
+                  </div>
+               )}
+            </div>
+         </div>
+      </div>
     </motion.div>
   );
 };
@@ -436,13 +717,13 @@ const AuthScreen: React.FC<{ onAuth: (m: LoginMethod, name?: string) => void }> 
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-600/20 rounded-full blur-[100px] animate-pulse-glow" style={{ animationDelay: '1.5s' }}></div>
         
         <div className="glass-card w-full max-w-md rounded-[3rem] p-10 text-center relative z-10 animate-slide-up border border-white/10">
-            <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2rem] mb-10 mx-auto flex items-center justify-center text-white shadow-[0_0_30px_rgba(99,102,241,0.4)] rotate-3">
+            <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2rem] mb-10 mx-auto flex items-center justify-center text-white shadow-[0_0_30px_rgba(20,184,166,0.4)] rotate-3">
                 <BookOpen size={48} strokeWidth={2.5} />
             </div>
             {view === 'landing' ? (
                 <div className="space-y-8 animate-slide-in">
                     <div>
-                        <h1 className="text-4xl font-black text-white tracking-tighter mb-2 leading-none neon-text">StudyGram V7</h1>
+                        <h1 className="text-4xl font-black text-white tracking-tighter mb-2 leading-none neon-text">EduNova AI</h1>
                         <p className="text-indigo-300 font-bold uppercase tracking-widest text-[10px]">Official Exam Integration</p>
                     </div>
                     <div className="space-y-4">
@@ -481,42 +762,63 @@ const AuthScreen: React.FC<{ onAuth: (m: LoginMethod, name?: string) => void }> 
   );
 };
 
-const Header: React.FC<any> = ({ onOpenMenu, activeTab, userData }) => (
-  <header className="fixed top-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-4xl h-16 glass rounded-2xl z-40 flex items-center justify-between px-4 shadow-lg border border-white/10">
-    <div className="flex items-center">
-      <button onClick={onOpenMenu} className="p-2.5 bg-white/5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-all">
-          <Menu size={20} strokeWidth={2.5} />
-      </button>
-    </div>
-    
-    <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
-        <h1 className="font-black text-white uppercase tracking-tighter text-lg leading-none neon-text">StudyGram</h1>
-    </div>
+const Header: React.FC<any> = ({ onOpenMenu, activeTab, userData }) => {
+  const [timeStr, setTimeStr] = useState('');
 
-    <div className="flex items-center gap-2">
-        <div className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-1.5 rounded-xl border border-amber-500/20">
-          <Stars size={14} className="text-amber-400" fill="currentColor" />
-          <span className="text-[10px] font-black text-amber-400">{userData.coins}</span>
+  useEffect(() => {
+    const updateHeaderTime = () => {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      setTimeStr(`${hh}:${mm}:${ss}`);
+    };
+    updateHeaderTime();
+    const interval = setInterval(updateHeaderTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <header className="fixed top-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-4xl h-16 glass rounded-2xl z-40 flex items-center justify-between px-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-white/10">
+      <div className="flex items-center gap-2">
+        <button onClick={onOpenMenu} className="p-2.5 bg-white/5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-all border border-white/5">
+            <Menu size={18} strokeWidth={2.5} />
+        </button>
+        <div className="flex items-center gap-1.5 bg-slate-950/45 px-3 py-1.5 rounded-full border border-teal-500/25 text-teal-400 font-bold text-[10px] font-mono tracking-wider shadow-inner">
+          <Clock size={12} className="text-teal-400 animate-pulse" />
+          <span>{timeStr}</span>
         </div>
-        <div className="flex items-center gap-1.5 bg-orange-500/10 px-2.5 py-1.5 rounded-xl border border-orange-500/20">
-          <Flame size={14} className="text-orange-400" fill="currentColor" />
-          <span className="text-[10px] font-black text-orange-400">{userData.streak}</span>
-        </div>
-        <div className="flex items-center gap-1.5 bg-rose-500/10 px-2.5 py-1.5 rounded-xl border border-rose-500/20">
-          <Heart size={14} className="text-rose-400" fill="currentColor" />
-          <span className="text-[10px] font-black text-rose-400">{userData.lives}</span>
-        </div>
-        <div className="relative group cursor-pointer ml-1">
-            <div className={`absolute -inset-0.5 rounded-full blur-sm opacity-70 animate-pulse ${userData.streak >= 7 ? 'bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500' : 'bg-orange-500/50'}`}></div>
-            <img src={userData.avatar} className="relative w-8 h-8 rounded-full border border-white/30 shadow-lg" alt="avatar" />
-        </div>
-    </div>
-  </header>
-);
+      </div>
+      
+      <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
+          <h1 className="font-extrabold text-white tracking-[0.14em] uppercase text-sm md:text-base leading-none select-none drop-shadow-[0_0_12px_rgba(255,255,255,0.2)]">EDUNOVA AI</h1>
+      </div>
+
+      <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="flex items-center gap-1 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/30">
+            <Stars size={13} className="text-amber-400" fill="currentColor" />
+            <span className="text-[10px] font-extrabold text-amber-400">{userData.coins}</span>
+          </div>
+          <div className="flex items-center gap-1 bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/30">
+            <Flame size={13} className="text-orange-400" fill="currentColor" />
+            <span className="text-[10px] font-extrabold text-orange-400">{userData.streak}</span>
+          </div>
+          <div className="flex items-center gap-1 bg-rose-500/10 px-3 py-1.5 rounded-full border border-rose-500/30">
+            <Heart size={13} className="text-rose-400" fill="currentColor" />
+            <span className="text-[10px] font-extrabold text-rose-400">{userData.lives}</span>
+          </div>
+          <div className="relative group cursor-pointer ml-1">
+              <div className={`absolute -inset-0.5 rounded-full blur-sm opacity-70 animate-pulse ${userData.streak >= 7 ? 'bg-gradient-to-r from-teal-400 via-emerald-400 to-cyan-400' : 'bg-teal-500/40'}`}></div>
+              <img src={userData.avatar} className="relative w-8 h-8 rounded-full border border-white/20 shadow-md" alt="avatar" />
+          </div>
+      </div>
+    </header>
+  );
+};
 
 const BottomNav: React.FC<any> = ({ activeTab, setActiveTab }) => (
   <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-auto z-40">
-    <nav className="glass rounded-full border border-white/10 px-2 py-1.5 flex items-center gap-1 shadow-2xl backdrop-blur-2xl">
+    <nav className="glass rounded-full border border-white/10 px-3 py-2 flex items-center gap-2 shadow-[0_15px_40px_rgba(0,0,0,0.8)] backdrop-blur-3xl bg-slate-950/80">
         {[
             { id: AppTab.FEED, icon: Home },
             { id: AppTab.MISSION, icon: Rocket },
@@ -531,23 +833,23 @@ const BottomNav: React.FC<any> = ({ activeTab, setActiveTab }) => (
                 <button 
                   key={tab.id} 
                   onClick={() => setActiveTab(tab.id)} 
-                  className={`relative p-3 rounded-full transition-all duration-300 ${isActive ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}
+                  className={`relative p-3 rounded-full transition-all duration-300 ${isActive ? 'text-teal-400 animate-pulse-glow' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                     {isActive && (
                       <>
                         <motion.div 
                           layoutId="activeTabGlow"
-                          className="absolute inset-0 bg-indigo-500/10 rounded-full blur-xl"
+                          className="absolute inset-0 bg-teal-500/10 rounded-full blur-xl"
                           transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                         />
                         <motion.div 
                           layoutId="activeTabDot"
-                          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]"
+                          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-teal-400 rounded-full shadow-[0_0_8px_rgba(20,184,166,0.9)]"
                           transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                         />
                       </>
                     )}
-                    <tab.icon size={20} strokeWidth={isActive ? 2.5 : 2} className={`relative z-10 ${isActive ? 'drop-shadow-[0_0_10px_rgba(99,102,241,0.8)]' : ''}`} />
+                    <tab.icon size={19} strokeWidth={isActive ? 2.5 : 2} className={`relative z-10 ${isActive ? 'drop-shadow-[0_0_10px_rgba(20,184,166,0.8)]' : ''}`} />
                 </button>
             );
         })}
@@ -606,12 +908,12 @@ const LoadingScreen = () => (
   <div className="fixed inset-0 bg-[#0f172a] flex items-center justify-center z-[500]">
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.15)_0,transparent_50%)] animate-pulse-glow"></div>
     <div className="flex flex-col items-center gap-6 relative z-10">
-      <div className="relative w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2rem] flex items-center justify-center text-white shadow-[0_0_30px_rgba(99,102,241,0.5)] animate-float">
+      <div className="relative w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2rem] flex items-center justify-center text-white shadow-[0_0_30px_rgba(20,184,166,0.5)] animate-float">
         <Bot size={40} strokeWidth={2.5}/>
       </div>
       <div className="flex flex-col items-center gap-1">
-        <span className="font-black text-white text-xs uppercase tracking-[0.4em] animate-pulse neon-text">StudyGram V7</span>
-        <span className="font-medium text-indigo-400 text-[9px] uppercase tracking-widest">Premium Edition</span>
+        <span className="font-black text-white text-xs uppercase tracking-[0.4em] animate-pulse neon-text">EduNova AI</span>
+        <span className="font-medium text-indigo-400 text-[9px] uppercase tracking-widest">Premium AI Edition</span>
       </div>
     </div>
   </div>

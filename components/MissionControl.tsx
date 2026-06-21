@@ -7,7 +7,7 @@ import {
   XCircle, Award, ListOrdered, BarChart, Timer
 } from 'lucide-react';
 import { UserProfile, StudyMission, Grade, ExamDifficulty } from '../types';
-import { generateExamRoadmap, generateExamPaper } from '../services/geminiService';
+import { generateExamRoadmap, generateStructuredExamPaper } from '../services/geminiService';
 
 const MissionControl: React.FC<{ userData: UserProfile; onUpdate: (u: UserProfile) => void }> = ({ userData, onUpdate }) => {
   const [loading, setLoading] = useState(false);
@@ -21,6 +21,14 @@ const MissionControl: React.FC<{ userData: UserProfile; onUpdate: (u: UserProfil
   
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({}); // Store index of selected option
   const [isReviewed, setIsReviewed] = useState(false);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (errorToast) {
+      const timer = setTimeout(() => setErrorToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorToast]);
 
   useEffect(() => {
     let interval: any = null;
@@ -90,15 +98,16 @@ const MissionControl: React.FC<{ userData: UserProfile; onUpdate: (u: UserProfil
     setIsReviewed(false);
     setExamTimer(0);
     try {
-      const exam = await generateExamPaper(subject, grade, difficulty, questionCount);
+      const exam = await generateStructuredExamPaper(subject, grade, difficulty, questionCount);
       if (exam && exam.length > 0) {
         setActiveExam(exam);
         setIsTimerActive(true);
       } else {
-        alert("AI đang bận, fen thử lại sau vài giây nhé!");
+        setErrorToast("AI đang bận, fen thử lại sau vài giây nhé!");
       }
     } catch (e) {
       console.error(e);
+      setErrorToast("Đã xảy ra lỗi khi tạo đề, vui lòng thử lại nhé!");
     } finally {
       setLoadingNodeId(null);
     }
@@ -422,10 +431,26 @@ const MissionControl: React.FC<{ userData: UserProfile; onUpdate: (u: UserProfil
           <p className="text-sm font-bold text-slate-400 italic leading-relaxed px-4">
             "Fen có thể chọn bất kỳ chương nào để ôn luyện. EXP được tính theo số câu đúng thực tế."
           </p>
-          <button onClick={() => onUpdate({...userData, currentMission: undefined})} className="text-indigo-400 font-black text-[10px] uppercase tracking-[0.3em] pt-4 hover:text-indigo-300 transition-colors">
+          <button onClick={() => onUpdate({ ...userData, currentMission: undefined })} className="text-indigo-400 font-black text-[10px] uppercase tracking-[0.3em] pt-4 hover:text-indigo-300 transition-colors">
              ĐỔI MÔN HỌC / CẤU HÌNH ĐỀ
           </button>
        </div>
+
+       <AnimatePresence>
+         {errorToast && (
+           <motion.div
+             initial={{ opacity: 0, scale: 0.9, y: -20 }}
+             animate={{ opacity: 1, scale: 1, y: 0 }}
+             exit={{ opacity: 0, scale: 0.9, y: -10 }}
+             className="absolute top-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4"
+           >
+             <div className="bg-rose-500/90 text-white p-4 rounded-3xl shadow-[0_0_35px_rgba(244,63,94,0.4)] backdrop-blur-md border border-white/20 flex items-center gap-3">
+               <XCircle size={20} className="shrink-0 text-white" />
+               <p className="text-xs font-black tracking-tight">{errorToast}</p>
+             </div>
+           </motion.div>
+         )}
+       </AnimatePresence>
     </div>
   );
 };

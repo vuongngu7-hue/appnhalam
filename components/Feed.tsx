@@ -31,8 +31,8 @@ const Feed: React.FC<{ userData: UserProfile; onExp: (n: number) => void }> = ({
         setPosts(validatedPosts);
       } else {
         const initial = [{
-          id: 'p1', uid: 'admin', userName: 'Hệ thống StudyGram 🛡️', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Admin',
-          content: 'Chào mừng các học giả tới phiên bản **StudyGram V7 Performance**! 🚀\n\nĐã tối ưu hóa tốc độ xử lý, giảm lag và tăng trải nghiệm lướt siêu mượt. Hãy chia sẻ kiến thức ngay nào! 🔥', category: 'Thông báo', type: 'event' as PostType, mood: '🚀', createdAt: Date.now(), likes: [], comments: [], isPinned: true, aiAnalysis: 'Hệ thống đang hoạt động với hiệu suất tối đa!'
+          id: 'p1', uid: 'admin', userName: 'Hệ thống EduNova AI 🛡️', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Admin',
+          content: 'Chào mừng các học giả tới phiên bản **EduNova AI - Hệ điều hành học tập kịch tính**! 🚀\n\nĐã tối ưu hóa tốc độ xử lý, trang bị AI thông minh, và giao diện tuyệt đẹp. Hãy trải nghiệm ngay! 🔥', category: 'Thông báo', type: 'event' as PostType, mood: '🚀', createdAt: Date.now(), likes: [], comments: [], isPinned: true, aiAnalysis: 'Hệ thống đang hoạt động với hiệu suất tối đa!'
         }];
         setPosts(initial);
       }
@@ -167,7 +167,7 @@ const PostCard = memo(({ post, userData, onLike, onComment, onDelete }: { post: 
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const shareText = `${post.userName} trên StudyGram:\n\n${post.content}\n\n#StudyGram #V7`;
+    const shareText = `${post.userName} trên EduNova AI:\n\n${post.content}\n\n#EduNovaAI #FutureAcademy`;
     try {
       if (navigator.share) await navigator.share({ title: `Bài viết của ${post.userName}`, text: shareText, url: window.location.href });
       else {

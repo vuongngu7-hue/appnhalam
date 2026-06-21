@@ -7,7 +7,7 @@ import {
   Sparkles, Ghost, Zap, X, ShieldCheck, Crown, ShieldAlert, Key,
   Lock, CheckCircle2, AlertCircle, TrendingUp, Briefcase, ChevronRight,
   ListChecks, RefreshCw, Stars, Globe, BarChart3, Ruler, Plus,
-  Info
+  Info, History
 } from 'lucide-react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, 
@@ -90,6 +90,60 @@ const Profile: React.FC<ProfileProps> = ({ userData, onUpdate, onToast }) => {
     return insights[String(topSkill)] || "Bạn đang tiến bộ rất đều. Hãy tiếp tục duy trì phong độ này!";
   }, [skills]);
 
+  const recentActivities = useMemo(() => {
+    const logs = userData.activityLog || [];
+    const oneDayAgo = Date.now() - 24 * 3600 * 1000;
+    return logs.filter(log => log.timestamp >= oneDayAgo)
+               .sort((a, b) => b.timestamp - a.timestamp);
+  }, [userData.activityLog]);
+
+  const formatRelativeTime = (timestamp: number) => {
+    const diff = Date.now() - timestamp;
+    if (diff < 60 * 1000) return 'Vừa xong';
+    
+    const minutes = Math.floor(diff / (60 * 1000));
+    if (minutes < 60) return `${minutes} phút trước`;
+    
+    const hours = Math.floor(diff / (3600 * 1000));
+    if (hours < 24) return `${hours} giờ trước`;
+    
+    return 'Hôm qua';
+  };
+
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'quiz':
+        return <BrainCircuit size={20} />;
+      case 'focus':
+        return <Flame size={20} />;
+      case 'tutor':
+        return <BookOpen size={20} />;
+      case 'feed':
+        return <Sparkles size={20} />;
+      case 'mission':
+        return <Target size={20} />;
+      default:
+        return <Award size={20} />;
+    }
+  };
+
+  const getActivityColor = (type: string) => {
+    switch (type) {
+      case 'quiz':
+        return 'bg-pink-500/10 text-pink-400 border-pink-500/20';
+      case 'focus':
+        return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
+      case 'tutor':
+        return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+      case 'feed':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'mission':
+        return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+      default:
+        return 'bg-slate-500/10 text-slate-400 border-white/5';
+    }
+  };
+
   return (
     <div className="animate-slide-up pb-32 max-w-2xl mx-auto w-full px-4">
       <div className="flex flex-col items-center text-center mt-10 mb-16">
@@ -151,6 +205,63 @@ const Profile: React.FC<ProfileProps> = ({ userData, onUpdate, onToast }) => {
                <Plus size={16} className="text-slate-500" />
                <span className="text-[8px] font-black text-slate-500 uppercase">Shop</span>
             </div>
+         </div>
+      </div>
+
+      {/* Activity Log Section */}
+      <div className="glass-card p-8 rounded-[3rem] border border-white/10 shadow-2xl mb-12 bg-slate-900/50">
+         <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+               <div className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center shadow-lg">
+                  <History size={20}/>
+               </div>
+               <div>
+                  <h3 className="text-xl font-black text-white tracking-tight">Nhật Ký Hoạt Động</h3>
+                  <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Tiến trình trong ngày gần nhất</p>
+               </div>
+            </div>
+            
+            <div className="bg-emerald-500/10 text-emerald-400 px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-500/20 shadow-sm flex items-center gap-1.5 animate-pulse">
+               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
+               Live
+            </div>
+         </div>
+
+         <div className="space-y-4">
+            {recentActivities.length === 0 ? (
+               <div className="text-center py-10 bg-slate-800/10 rounded-2xl border border-dashed border-white/5 opacity-60">
+                  <Sparkles size={32} className="text-slate-500 mx-auto mb-3 animate-float" />
+                  <p className="text-sm font-semibold text-slate-400 mb-1">Chưa có hoạt động hôm nay</p>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">Fen chưa hoàn thành hoạt động nào trong 24h qua. Hãy tự học hoặc hỏi đáp AI Tutor và thắp sáng ngọn lửa tri thức nhé!</p>
+               </div>
+            ) : (
+               recentActivities.map((act) => {
+                  const itemIcon = getActivityIcon(act.type);
+                  const itemColor = getActivityColor(act.type);
+                  return (
+                     <div key={act.id} className="flex items-center justify-between p-4 bg-slate-800/40 border border-white/5 rounded-2xl hover:border-white/15 transition-all duration-300">
+                        <div className="flex items-center gap-4 min-w-0">
+                           <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border shadow-inner ${itemColor}`}>
+                              {itemIcon}
+                           </div>
+                           <div className="min-w-0">
+                              <h4 className="text-sm font-black text-white leading-snug tracking-tight truncate">{act.title}</h4>
+                              <p className="text-slate-400 text-xs mt-0.5 leading-relaxed truncate max-w-[180px] sm:max-w-md">{act.description}</p>
+                           </div>
+                        </div>
+
+                        <div className="flex flex-col items-end shrink-0 pl-3">
+                           <span className="text-[11px] font-black text-emerald-400 font-mono tracking-tight bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                              +{act.xpGained} EXP
+                           </span>
+                           <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest mt-1.5">
+                              {formatRelativeTime(act.timestamp)}
+                           </span>
+                        </div>
+                     </div>
+                  );
+               })
+            )}
          </div>
       </div>
 
@@ -231,12 +342,21 @@ const Profile: React.FC<ProfileProps> = ({ userData, onUpdate, onToast }) => {
                </div>
 
                <div className="grid grid-cols-2 gap-3">
-                  {Object.entries(skills).map(([key, val]) => (
-                    <div key={key} className="bg-slate-800/40 p-3 rounded-2xl border border-white/5 flex flex-col items-center justify-center">
-                       <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter mb-1">{key.replace(/([A-Z])/g, ' $1')}</span>
-                       <span className="text-sm font-black text-indigo-400">{val}%</span>
-                    </div>
-                  ))}
+                  {Object.entries(skills).map(([key, val]) => {
+                    const skillVN: Record<string, string> = {
+                      criticalThinking: 'TƯ DUY PHẢN BIỆN',
+                      focus: 'SỰ TẬP TRUNG',
+                      creativity: 'SỨC SÁNG TẠO',
+                      knowledge: 'KIẾN THỨC',
+                      discipline: 'KỶ LUẬT THÉP',
+                    };
+                    return (
+                      <div key={key} className="bg-slate-800/40 p-3 rounded-2xl border border-white/5 flex flex-col items-center justify-center">
+                         <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter mb-1">{skillVN[key] || key.toUpperCase()}</span>
+                         <span className="text-sm font-black text-indigo-400">{val}%</span>
+                      </div>
+                    );
+                  })}
                </div>
             </div>
          </div>
